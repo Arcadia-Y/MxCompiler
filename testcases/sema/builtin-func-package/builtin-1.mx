@@ -1,0 +1,22 @@
+/*
+Test Package: Sema_Local_Preview
+Test Target: Built-In
+Author: 14' Tiancheng Xie
+Time: 2019-10-20
+Verdict: Success
+Origin Package: Semantic Pretest
+*/
+
+int main(){
+	int[] a = new int[3];
+	print("I have done " + toString(a.size()) + " little things");
+	println("too young!");
+	string s1 = "\"hahaha\"";
+	print(getString() + toString(s1.length()));
+	string s2 = "four scores and seven years";
+	println(s2.substring(0, getInt()));
+	string s3 = "45 best songs in the world";
+	println(toString(s3.parseInt()));
+	string s4 = "45 best songs";
+	return s4.ord(5);
+}
