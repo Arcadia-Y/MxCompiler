@@ -108,31 +108,17 @@ public interface MxVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitNonArray(MxParser.NonArrayContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code arrayType}
-	 * labeled alternative in {@link MxParser#type}.
+	 * Visit a parse tree produced by {@link MxParser#type}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitArrayType(MxParser.ArrayTypeContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code nonArrayType}
-	 * labeled alternative in {@link MxParser#type}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitNonArrayType(MxParser.NonArrayTypeContext ctx);
+	T visitType(MxParser.TypeContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link MxParser#funcDecl}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitFuncDecl(MxParser.FuncDeclContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link MxParser#parameterDeclList}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitParameterDeclList(MxParser.ParameterDeclListContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link MxParser#parameterDecl}.
 	 * @param ctx the parse tree
@@ -242,25 +228,11 @@ public interface MxVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitTernary(MxParser.TernaryContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link MxParser#parameterList}.
+	 * Visit a parse tree produced by {@link MxParser#newItem}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitParameterList(MxParser.ParameterListContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code newArray}
-	 * labeled alternative in {@link MxParser#newItem}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitNewArray(MxParser.NewArrayContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code newNonArray}
-	 * labeled alternative in {@link MxParser#newItem}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitNewNonArray(MxParser.NewNonArrayContext ctx);
+	T visitNewItem(MxParser.NewItemContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link MxParser#literal}.
 	 * @param ctx the parse tree

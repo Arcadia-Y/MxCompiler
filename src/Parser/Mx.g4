@@ -16,11 +16,11 @@ declaration
 
 statement
     :   blockStmt  
-    |   exprStmt    
+    |   varDeclStmt     
     |   ifStmt      
     |   loopStmt    
     |   jumpStmt    
-    |   varDeclStmt 
+    |   exprStmt
     ;
 
 blockStmt
@@ -39,10 +39,12 @@ loopStmt
     :   'while' '(' expr ')' statement # While
     |   'for' '(' init = exprStmt
                   cond = expr? ';'
-                  next = expr? ')'     # For
+                  next = expr? ')'
+                statement              # For
     |   'for' '(' declInit = varDecl
                   cond = expr? ';'
-                  next = expr? ')'     # For
+                  next = expr? ')'
+                statement              # For
     ;
 
 jumpStmt
@@ -69,16 +71,11 @@ nonArray
     ;
 
 type
-    :   type '[' ']' # arrayType
-    |   nonArray # nonArrayType
+    :   nonArray ('[' ']')* 
     ;
 
 funcDecl
-    :   type Identifier '(' parameterDeclList? ')' blockStmt
-    ;
-
-parameterDeclList
-    :   parameterDecl (',' parameterDecl)*
+    :   type Identifier '(' (parameterDecl (',' parameterDecl)*)? ')' blockStmt
     ;
 
 parameterDecl
@@ -104,7 +101,7 @@ expr
     :   '(' expr ')'                                    # subExpr
 
     |   expr op=('++'|'--')                             # postfix
-    |   expr '(' parameterList? ')'                     # functionCall
+    |   expr '(' (expr (',' expr)*)? ')'                # functionCall
     |   expr '[' index=expr ']'                         # subscript
     |   expr  '.' Identifier                            # memberAccess
 
@@ -133,13 +130,9 @@ expr
     |   literal                                         # constant
     ;
 
-parameterList
-    :   expr (',' expr)*
-    ;
-
 newItem
-    :   nonArray ('[' expr ']')+ ('['']')*  # newArray
-    |   nonArray                            # newNonArray
+    :   nonArray ('[' expr ']')+ ('['']')*
+    |   nonArray                            
     ;
 
 literal

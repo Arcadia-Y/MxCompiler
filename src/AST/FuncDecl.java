@@ -1,11 +1,12 @@
 package AST;
 
+import java.util.LinkedList;
 import Util.Position;
 
 public class FuncDecl extends Declaration {
     public TypeNode retType;
     public String name;
-    public ParameterDeclList para;
+    public LinkedList<ParameterDecl> para = new LinkedList<ParameterDecl>();
     public BlockStmt block;
 
     FuncDecl(Position pos) {

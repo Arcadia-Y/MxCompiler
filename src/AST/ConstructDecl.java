@@ -1,13 +1,12 @@
 package AST;
 
-import java.util.LinkedList;
-
 import Util.Position;
 
-public class ParameterList extends ASTNode {
-    public LinkedList<Expr> list;
-    
-    ParameterList(Position pos) {
+public class ConstructDecl extends Declaration {
+    String name;
+    BlockStmt block;
+
+    ConstructDecl(Position pos) {
         super(pos);
     }
     @Override

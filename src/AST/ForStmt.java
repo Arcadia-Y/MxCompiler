@@ -5,6 +5,7 @@ import Util.Position;
 public class ForStmt extends Statement {
     public Expr init, cond, next;
     public VarDecl varDecl;
+    public Statement stmt;
 
     ForStmt(Position pos) {
         super(pos);

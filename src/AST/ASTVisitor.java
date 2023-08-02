@@ -8,6 +8,7 @@ public interface ASTVisitor {
      void visit(VarDecl it);
      void visit(FuncDecl it);
      void visit(ClassDecl it);
+     void visit(ConstructDecl it);
 
      void visit(BlockStmt it);
      void visit(ExprStmt it);
@@ -19,14 +20,12 @@ public interface ASTVisitor {
      void visit(ReturnStmt it);
      void visit(VarDeclStmt it);
 
-     void visit(ParameterDeclList it);
      void visit(ParameterDecl it);
      void visit(VarInitDecl it);
 
      void visit(Expr it);
      void visit(Postfix it);
      void visit(FunctionCall it);
-     void visit(ParameterList it);
      void visit(Subscript it);
      void visit(MemberAccess it);
      void visit(UnaryExpr it);

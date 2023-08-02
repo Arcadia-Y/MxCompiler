@@ -6,7 +6,7 @@ import Util.Type;
 
 public class NewExpr extends Expr{
     Type t;
-    LinkedList<Expr> init;
+    LinkedList<Expr> init = new LinkedList<Expr>();
 
     NewExpr(Position pos) {
         super(pos);

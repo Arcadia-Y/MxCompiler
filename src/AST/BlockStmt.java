@@ -5,7 +5,7 @@ import java.util.LinkedList;
 import Util.Position;
 
 public class BlockStmt extends Statement {
-    public LinkedList<Statement> stmts;
+    public LinkedList<Statement> stmts = new LinkedList<Statement>();
 
     BlockStmt(Position pos) {
         super(pos);

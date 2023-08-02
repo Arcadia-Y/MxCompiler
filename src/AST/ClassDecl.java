@@ -6,7 +6,7 @@ import Util.Position;
 
 public class ClassDecl extends Declaration {
     String name;
-    LinkedList<Declaration> mem;
+    LinkedList<Declaration> mem = new LinkedList<Declaration>();
 
     ClassDecl(Position pos) {
         super(pos);
