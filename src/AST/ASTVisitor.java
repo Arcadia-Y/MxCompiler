@@ -19,7 +19,6 @@ public interface ASTVisitor {
      void visit(ReturnStmt it);
      void visit(VarDeclStmt it);
 
-     void visit(Type it);
      void visit(ParameterDeclList it);
      void visit(ParameterDecl it);
      void visit(VarInitDecl it);
@@ -41,4 +40,7 @@ public interface ASTVisitor {
      void visit(IntConst it);
      void visit(StringConst it);
      void visit(NullConst it);
+
+
+     void visit(TypeNode it);
 }

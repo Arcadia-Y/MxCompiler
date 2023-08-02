@@ -1,14 +1,12 @@
 package AST;
 
-import java.util.LinkedList;
 import Util.Position;
 import Util.Type;
 
-public class NewExpr extends Expr{
+public class TypeNode extends ASTNode {
     Type t;
-    LinkedList<Expr> init;
 
-    NewExpr(Position pos) {
+    TypeNode(Position pos) {
         super(pos);
     }
     @Override

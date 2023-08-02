@@ -128,6 +128,7 @@ expr
     |   <assoc=right> expr '?' expr ':' expr            # ternary
     |   <assoc=right> expr '=' expr                     # assignment
 
+    |   This                                            # variable
     |   Identifier                                      # variable
     |   literal                                         # constant
     ;

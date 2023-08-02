@@ -3,7 +3,7 @@ package AST;
 import Util.Position;
 
 public class ParameterDecl extends ASTNode {
-    public Type t;
+    public TypeNode t;
     public String name;
 
     ParameterDecl(Position pos) {
