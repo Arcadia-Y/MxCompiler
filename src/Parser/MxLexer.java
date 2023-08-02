@@ -1,4 +1,7 @@
 // Generated from Mx.g4 by ANTLR 4.13.0
+ 
+package Parser;
+
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.Token;

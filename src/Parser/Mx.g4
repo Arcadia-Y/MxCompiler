@@ -1,22 +1,26 @@
 grammar Mx;		
 
+@header { 
+package Parser;
+}
+
 program
     :   declaration* EOF
     ;
 
 declaration
-    :   varDecl   # var
-    |   funcDecl  # func
-    |   classDecl # class
+    :   varDecl
+    |   funcDecl
+    |   classDecl
     ;
 
 statement
-    :   blockStmt
-    |   exprStmt 
-    |   ifStmt  
-    |   loopStmt  
-    |   jumpStmt  
-    |   varDecl 
+    :   blockStmt  
+    |   exprStmt    
+    |   ifStmt      
+    |   loopStmt    
+    |   jumpStmt    
+    |   varDeclStmt 
     ;
 
 blockStmt
@@ -28,23 +32,27 @@ exprStmt
     ;
 
 ifStmt
-    :   'if' '(' expr ')' statement ('else' statement)?
+    :   'if' '(' cond=expr ')' trueStmt=statement ('else' falseStmt=statement)?
     ;
 
 loopStmt
-    :   'while' '(' expr ')' statement # while
+    :   'while' '(' expr ')' statement # While
     |   'for' '(' init = exprStmt
                   cond = expr? ';'
-                  next = expr? ')'     # for
+                  next = expr? ')'     # For
     |   'for' '(' declInit = varDecl
                   cond = expr? ';'
-                  next = expr? ')'     # for
+                  next = expr? ')'     # For
     ;
 
 jumpStmt
-    :   'continue' ';'     # continue
-    |   'break' ';'        # break
-    |   'return' expr? ';' # return
+    :   'continue' ';'     # Continue
+    |   'break' ';'        # Break
+    |   'return' expr? ';' # Return
+    ;
+
+varDeclStmt
+    : varDecl
     ;
 
 varDecl
@@ -55,14 +63,14 @@ varInitDecl
     :   Identifier ('=' expr)?
     ;
 
-nonArrayType
+nonArray
     :   BultinType
     |   Identifier
     ;
 
 type
-    :   type '[' ']'
-    |   nonArrayType
+    :   type '[' ']' # arrayType
+    |   nonArray # nonArrayType
     ;
 
 funcDecl
@@ -78,9 +86,9 @@ parameterDecl
     ;
 
 classDecl
-    :   'class' Identifier '{' memberDecl* '}'
+    :   'class' Identifier '{' memberDecl* '}' ';'
     ;
-
+ 
 memberDecl
     :   varDecl
     |   funcDecl
@@ -96,7 +104,7 @@ expr
     :   '(' expr ')'                                    # subExpr
 
     |   expr op=('++'|'--')                             # postfix
-    |   expr '(' parameterList? ')'                      # functionCall
+    |   expr '(' parameterList? ')'                     # functionCall
     |   expr '[' index=expr ']'                         # subscript
     |   expr  '.' Identifier                            # memberAccess
 
@@ -120,7 +128,7 @@ expr
     |   <assoc=right> expr '?' expr ':' expr            # ternary
     |   <assoc=right> expr '=' expr                     # assignment
 
-    |   Identifier                                      # identifier
+    |   Identifier                                      # variable
     |   literal                                         # constant
     ;
 
@@ -129,8 +137,8 @@ parameterList
     ;
 
 newItem
-    :   nonArrayType ('[' expr ']')+ ('['']')*  # array
-    |   nonArrayType                            # nonArray
+    :   nonArray ('[' expr ']')+ ('['']')*  # newArray
+    |   nonArray                            # newNonArray
     ;
 
 literal
