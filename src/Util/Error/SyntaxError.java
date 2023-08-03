@@ -1,8 +1,9 @@
 package Util.Error;
+
 import Util.Position;
 
-public class SyntaxError extends Error {
+public class SyntaxError extends Error{
     public SyntaxError(String msg, Position pos) {
-        super("SyntaxError: " + msg, pos);
+        super("Syntax Error: " + msg, pos);
     }
 }
