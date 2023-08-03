@@ -177,27 +177,32 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
     public ASTNode visitNewExpr(MxParser.NewExprContext ctx) {
         var ret = new NewExpr(new Position(ctx));
         ret.t = new Type();
-        if (ctx.newItem().nonArray().BultinType() != null) {  
-            switch (ctx.newItem().nonArray().getText()) {
-            case "void":
-                ret.t.baseType = BaseType.VOID;
-                break;
-            case "bool":
-                ret.t.baseType = BaseType.BOOL;
-                break;
-            case "int":
-                ret.t.baseType = BaseType.INT;
-                break;
-            case "string":
-                ret.t.baseType = BaseType.STRING;
+        if (ctx.newItem().nonArray() != null) {
+            if (ctx.newItem().nonArray().BultinType() != null) {  
+                switch (ctx.newItem().nonArray().getText()) {
+                case "void":
+                    ret.t.baseType = BaseType.VOID;
+                    break;
+                case "bool":
+                    ret.t.baseType = BaseType.BOOL;
+                    break;
+                case "int":
+                    ret.t.baseType = BaseType.INT;
+                    break;
+                case "string":
+                    ret.t.baseType = BaseType.STRING;
+                }
+            } else {
+                ret.t.baseType = BaseType.CLASS;
+                ret.t.className = ctx.newItem().nonArray().getText();
+            }
+            ret.t.arrayLayer = ctx.newItem().LeftBracket().size();
+            for (var son: ctx.newItem().expr()) {
+                ret.init.add((Expr) visit(son));
             }
         } else {
             ret.t.baseType = BaseType.CLASS;
-            ret.t.className = ctx.newItem().nonArray().getText();
-        }
-        ret.t.arrayLayer = ctx.newItem().LeftBracket().size();
-        for (var son: ctx.newItem().expr()) {
-            ret.init.add((Expr) visit(son));
+            ret.t.className = ctx.newItem().Identifier().getText();
         }
         return ret;
     }

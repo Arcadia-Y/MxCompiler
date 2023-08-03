@@ -132,7 +132,7 @@ expr
 
 newItem
     :   nonArray ('[' expr ']')+ ('['']')*
-    |   nonArray                            
+    |   Identifier ('('')')?                            
     ;
 
 literal
