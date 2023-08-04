@@ -1,11 +1,11 @@
 package AST;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import Util.Position;
 
 public class FunctionCall extends Expr {
     public Expr expr;
-    public LinkedList<Expr> para = new LinkedList<Expr>();
+    public ArrayList<Expr> para = new ArrayList<Expr>();
 
     FunctionCall(Position pos) {
         super(pos);

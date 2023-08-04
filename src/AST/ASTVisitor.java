@@ -2,8 +2,6 @@ package AST;
 
 public interface ASTVisitor {
      void visit(Program it);
-     void visit(Declaration it);
-     void visit(Statement it);
 
      void visit(VarDecl it);
      void visit(FuncDecl it);
@@ -23,7 +21,6 @@ public interface ASTVisitor {
      void visit(ParameterDecl it);
      void visit(VarInitDecl it);
 
-     void visit(Expr it);
      void visit(Postfix it);
      void visit(FunctionCall it);
      void visit(Subscript it);
@@ -34,12 +31,12 @@ public interface ASTVisitor {
      void visit(Ternary it);
      void visit(Assignment it);
 
-     void visit(Variable it);
+     void visit(Identifier it);
+     void visit(ThisNode it);
      void visit(BoolConst it);
      void visit(IntConst it);
      void visit(StringConst it);
      void visit(NullConst it);
-
 
      void visit(TypeNode it);
 }

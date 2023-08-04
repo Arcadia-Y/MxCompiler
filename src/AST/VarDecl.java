@@ -1,11 +1,11 @@
 package AST;
 
 import Util.Position;
-import java.util.LinkedList;
+import java.util.ArrayList;
 
 public class VarDecl extends Declaration {
     public TypeNode t;
-    public LinkedList<VarInitDecl> inits = new LinkedList<VarInitDecl>();
+    public ArrayList<VarInitDecl> inits = new ArrayList<VarInitDecl>();
 
     VarDecl(Position pos) {
         super(pos);

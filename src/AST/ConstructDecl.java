@@ -3,8 +3,8 @@ package AST;
 import Util.Position;
 
 public class ConstructDecl extends Declaration {
-    String name;
-    BlockStmt block;
+    public String name;
+    public BlockStmt block;
 
     ConstructDecl(Position pos) {
         super(pos);

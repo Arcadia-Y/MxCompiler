@@ -1,14 +1,14 @@
 package AST;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 
 import Util.Position;
 
 public class ClassDecl extends Declaration {
-    String name;
-    LinkedList<Declaration> mem = new LinkedList<Declaration>();
+    public String name;
+    public ArrayList<Declaration> mem = new ArrayList<Declaration>();
 
-    ClassDecl(Position pos) {
+    public ClassDecl(Position pos) {
         super(pos);
     }
     @Override

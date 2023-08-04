@@ -1,13 +1,13 @@
 package AST;
 
-import java.util.ArrayList;
 import Util.Position;
 
-public class NewExpr extends Expr{
-    public ArrayList<Expr> init = new ArrayList<Expr>();
+public class Identifier extends Expr {
+    public final String name;
 
-    NewExpr(Position pos) {
+    Identifier(Position pos, String n) {
         super(pos);
+        name = n;
     }
     @Override
     public void accept(ASTVisitor visitor) {

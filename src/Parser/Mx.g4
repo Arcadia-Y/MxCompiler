@@ -114,7 +114,6 @@ expr
     |   l=expr op=('+' | '-') r=expr                    # binaryExpr
     |   l=expr op=('<<' | '>>') r=expr                  # binaryExpr
     |   l=expr op=('<=' | '>=' | '<' | '>') r=expr      # binaryExpr
-    |   l=expr op=('<' | '>') r=expr                    # binaryExpr
     |   l=expr op=('==' | '!=') r=expr                  # binaryExpr
     |   l=expr op='&' r=expr                            # binaryExpr
     |   l=expr op='^' r=expr                            # binaryExpr
@@ -125,7 +124,7 @@ expr
     |   <assoc=right> expr '?' expr ':' expr            # ternary
     |   <assoc=right> expr '=' expr                     # assignment
 
-    |   This                                            # variable
+    |   This                                            # thisNode
     |   Identifier                                      # variable
     |   literal                                         # constant
     ;

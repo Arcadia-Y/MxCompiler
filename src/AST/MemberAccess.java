@@ -3,8 +3,8 @@ package AST;
 import Util.Position;
 
 public class MemberAccess extends Expr {
-    public Expr className;
-    public Variable memName;
+    public Expr obj;
+    public Identifier memName;
 
     MemberAccess(Position pos) {
         super(pos);

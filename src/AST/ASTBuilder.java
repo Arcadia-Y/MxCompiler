@@ -1,8 +1,12 @@
 package AST;
 
 import Parser.*;
+import Parser.MxParser.SubExprContext;
 import Util.Position;
 import Util.Type;
+import Util.Error.SyntaxError;
+import Util.ClassType;
+import Util.FuncType;
 import Util.Type.BaseType;
 
 public class ASTBuilder extends MxBaseVisitor<ASTNode> {
@@ -22,7 +26,8 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
     }
     public ASTNode visitExprStmt(MxParser.ExprStmtContext ctx) {
         ExprStmt ret = new ExprStmt(new Position(ctx));
-        ret.expr = (Expr) visit(ctx.expr());
+        if (ctx.expr() != null) 
+            ret.expr = (Expr) visit(ctx.expr());
         return ret;
     }
     public ASTNode visitIfStmt(MxParser.IfStmtContext ctx) {
@@ -41,12 +46,14 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
     }
     public ASTNode visitFor(MxParser.ForContext ctx) {
         ForStmt ret = new ForStmt(new Position(ctx));
-        if (ctx.init != null)
+        if (ctx.init.expr() != null)
             ret.init = (Expr) visit(ctx.init.expr());
-        else
+        else if (ctx.declInit != null)
             ret.varDecl = (VarDecl) visit(ctx.declInit);
-        ret.cond = (Expr) visit(ctx.cond);
-        ret.next = (Expr) visit(ctx.next);
+        if (ctx.cond != null)
+            ret.cond = (Expr) visit(ctx.cond);
+        if (ctx.next != null)
+            ret.next = (Expr) visit(ctx.next);
         ret.stmt = (Statement) visit(ctx.statement());
         return ret;
     }
@@ -79,9 +86,14 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
     public ASTNode visitFuncDecl(MxParser.FuncDeclContext ctx) {
         FuncDecl ret = new FuncDecl(new Position(ctx));
         ret.retType = (TypeNode) visit(ctx.type());
+        ret.funcType = new FuncType();
+        ret.funcType.retType = ret.retType.t;
         ret.name = ctx.Identifier().getText();
         for (var son: ctx.parameterDecl()) {
             ret.para.add((ParameterDecl) visit(son));
+        }
+        for (var arg: ret.para) {
+            ret.funcType.argTypes.add(arg.t.t);
         }
         ret.block = (BlockStmt) visit(ctx.blockStmt());
         return ret;
@@ -119,8 +131,7 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
                 ret.t.baseType = BaseType.STRING;
             }
         } else {
-            ret.t.baseType = BaseType.CLASS;
-            ret.t.className = ctx.nonArray().getText();
+            ret.t = new ClassType(ctx.nonArray().getText());
         }
         ret.t.arrayLayer = ctx.LeftBracket().size();
         return ret;
@@ -160,18 +171,24 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
         var ret = new Subscript(new Position(ctx));
         ret.array = (Expr) visit(ctx.expr(0));
         ret.index = (Expr) visit(ctx.index);
+        if (ret.array instanceof NewExpr && !(ctx.expr(0) instanceof SubExprContext))
+            throw new SyntaxError("cannot specify an array dimension after an empty dimension", ret.index.pos);
         return ret;
     }
     public ASTNode visitMemberAccess(MxParser.MemberAccessContext ctx) {
         var ret = new MemberAccess(new Position(ctx));
-        ret.className = (Expr) visit(ctx.expr());
-        ret.memName = new Variable(new Position(ctx.Identifier()), ctx.Identifier().getText());
+        ret.obj = (Expr) visit(ctx.expr());
+        ret.memName = new Identifier(new Position(ctx.Identifier()), ctx.Identifier().getText());
         return ret;
     }
     public ASTNode visitUnaryExpr(MxParser.UnaryExprContext ctx) {
         var ret = new UnaryExpr(new Position(ctx));
-        ret.expr = (Expr) visit(ctx.expr());
         ret.op = ctx.op.getText();
+        // to pretend int out of range exception
+        if (ret.op.equals("-") && ctx.expr().getText().equals("2147483648")) {
+            return new IntConst(new Position(ctx), -2147483648);
+        }
+        ret.expr = (Expr) visit(ctx.expr());
         return ret;
     }
     public ASTNode visitNewExpr(MxParser.NewExprContext ctx) {
@@ -193,16 +210,14 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
                     ret.t.baseType = BaseType.STRING;
                 }
             } else {
-                ret.t.baseType = BaseType.CLASS;
-                ret.t.className = ctx.newItem().nonArray().getText();
+                ret.t = new ClassType(ctx.newItem().nonArray().getText());
             }
             ret.t.arrayLayer = ctx.newItem().LeftBracket().size();
             for (var son: ctx.newItem().expr()) {
                 ret.init.add((Expr) visit(son));
             }
         } else {
-            ret.t.baseType = BaseType.CLASS;
-            ret.t.className = ctx.newItem().Identifier().getText();
+            ret.t = new ClassType(ctx.newItem().Identifier().getText());
         }
         return ret;
     }
@@ -227,8 +242,11 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
         return ret;
     }
     public ASTNode visitVariable(MxParser.VariableContext ctx) {
-        return new Variable(new Position(ctx), ctx.getText());
+        return new Identifier(new Position(ctx), ctx.getText());
     }
+    public ASTNode visitThisNode(MxParser.ThisNodeContext ctx) {
+        return new ThisNode(new Position(ctx));
+    } 
     public ASTNode visitConstant(MxParser.ConstantContext ctx) {
         String text = ctx.literal().getText();
         if (text.equals("true")) {
