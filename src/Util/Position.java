@@ -33,5 +33,7 @@ public class Position {
         return column;
     }
 
-    public String toString() { return row + "," + column; }
+    public String toString() { 
+        return "\033[01;34mrow " + row + ", column " + (column+1) + "\033[0m"; 
+    }
 }

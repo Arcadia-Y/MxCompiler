@@ -5,7 +5,7 @@ import Parser.MxLexer;
 import Parser.MxParser;
 import Semantic.SemanticChecker;
 import Semantic.SymbolCollector;
-import Util.Error.Error;
+import Util.Error.Error;    
 import Util.Error.MxErrorListener;
 import AST.*;
 
@@ -52,9 +52,8 @@ public class test {
 
     public static void main(String[] args) throws Exception {
         BufferedReader r = new BufferedReader(new FileReader("testcases/sema/judgelist.txt"));
-        while (true) {
+        while (r.ready()) {
             String path = r.readLine();
-            if (path == null) break;
             path = "testcases/sema/" + path;
             if (check(path))
                 System.out.println("PASS: " + path + "\n");
