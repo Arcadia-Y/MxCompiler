@@ -19,6 +19,7 @@ public class SemanticChecker implements ASTVisitor{
     Boolean hasReturn;
     int loopCount = 0;
     HashMap<String, FuncType> bultinMethod;
+    HashMap<String, Integer> varCount; // for variable renaming in each function
 
     public SemanticChecker() {
         bultinMethod = new HashMap<String, FuncType>();
@@ -48,16 +49,26 @@ public class SemanticChecker implements ASTVisitor{
     private void push(Declaration node) {
         parent = current;
         current = new Scope(parent, node);
-        node.scope = current;
     }
     private void push(Statement node) {
         parent = current;
         current = new Scope(parent, node);
-        node.scope = current;
     }
     private void pop() {
         current = parent;
         parent = current.parent;
+    }
+    private String rename(String n) {
+        var cnt = varCount.get(n);
+        if (cnt == null) {
+            current.rename.put(n, 0);
+            varCount.put(n, 1);
+            return n + ".0";
+        } else {
+            current.rename.put(n, cnt);
+            varCount.put(n, cnt+1);
+            return n + "." + cnt;
+        }
     }
 
     @Override
@@ -83,29 +94,34 @@ public class SemanticChecker implements ASTVisitor{
                     throw new SemanticError("expression type doesn't match variable type", item.pos);
             }
             current.table.put(item.id, it.t.t);
+            if (currentFunc != null)
+                item.id = rename(item.id);
         }
     }
     @Override
     public void visit(FuncDecl it) {
         push(it);
         currentFunc = it.getFuncType();
+        varCount = new HashMap<String, Integer>();
         hasReturn = false;
         checkTypeDef(currentFunc.retType, it.retType.pos);
         for (var arg : it.para) {
             checkVarRedef(arg.name, arg.pos);
             current.table.put(arg.name, arg.t.t);
+            arg.name = rename(arg.name);
         }
         for (var stmt : it.block.stmts)
             stmt.accept(this);
         if (!hasReturn && (currentFunc.retType.baseType != BaseType.VOID)&& !it.name.equals("main"))
             throw new SemanticError("non-void function should return a value", it.pos);
         currentFunc = null;
+        varCount = null;
         pop();
     }
     @Override
     public void visit(ClassDecl it) {
         parent = current;
-        current = it.scope;
+        current = global.classInfo.get(it.name);
         currentClass = it.name;
         for (var item : it.mem)
             item.accept(this);
@@ -116,9 +132,11 @@ public class SemanticChecker implements ASTVisitor{
     public void visit(ConstructDecl it) {
         push(it);
         currentFunc = new FuncType(new Type(BaseType.VOID), new ArrayList<Type>());
+        varCount = new HashMap<String, Integer>();
         for (var stmt : it.block.stmts)
             stmt.accept(this);
         currentFunc = null;
+        varCount = null;
         pop();
     }
     @Override
@@ -387,6 +405,9 @@ public class SemanticChecker implements ASTVisitor{
             if (t != null) {
                 it.t = t;
                 it.isLvalue = t.baseType == BaseType.FUNC ? false : true;
+                var cnt = s.rename.get(n);
+                if (cnt != null)
+                    it.name = n + "." + cnt;
                 return;
             }
             s = s.parent;

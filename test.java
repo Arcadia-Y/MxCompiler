@@ -10,7 +10,7 @@ import Util.Error.MxErrorListener;
 import AST.*;
 
 public class test {
-    private static boolean check(String path) throws Exception {
+    private static boolean checkSema(String path) throws Exception {
         BufferedReader reader = new BufferedReader(new FileReader(path));
         boolean ans = true;
         while (reader.ready()) {
@@ -55,8 +55,8 @@ public class test {
         while (r.ready()) {
             String path = r.readLine();
             path = "testcases/sema/" + path;
-            if (check(path))
-                System.out.println("PASS: " + path + "\n");
+            if (checkSema(path))
+                System.out.println("\033[01;32mPASS\033[0m: " + path + "\n");
             else {
                 System.out.println("WRONG ANSWER: " + path);
                 break;

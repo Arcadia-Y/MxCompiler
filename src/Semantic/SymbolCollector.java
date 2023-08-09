@@ -33,16 +33,16 @@ public class SymbolCollector {
             throw new SemanticError("main function should have no argument", node.pos);
     }
     public Scope visit(ClassDecl node) {
-        node.scope = new Scope(global, node);
+        var ret = new Scope(global, node);
         int construtCount = 0;
         for (var del : node.mem) {
             if (del instanceof FuncDecl) {
                 FuncDecl func = (FuncDecl) del;
-                if (node.scope.table.containsKey(func.name))
+                if (ret.table.containsKey(func.name))
                     throw new SemanticError("member function name redefined", func.pos);
                 if (func.name.equals(node.name))
                     throw new SemanticError("construct function should have no return type", func.pos);
-                node.scope.table.put(func.name, func.getFuncType());
+                ret.table.put(func.name, func.getFuncType());
             } else if (del instanceof ConstructDecl) {
                 ConstructDecl func = (ConstructDecl) del;
                 if (!func.name.equals(node.name))
@@ -53,12 +53,12 @@ public class SymbolCollector {
             } else {
                 VarDecl varDecls = (VarDecl) del;
                 for (var item : varDecls.inits) {
-                    if (node.scope.table.containsKey(item.id))
+                    if (ret.table.containsKey(item.id))
                         throw new SemanticError("member variable name redefined", item.pos);
-                    node.scope.table.put(item.id, varDecls.t.t);
+                    ret.table.put(item.id, varDecls.t.t);
                 }
             }
         }
-        return node.scope;
+        return ret;
     }
 }
