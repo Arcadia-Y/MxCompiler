@@ -10,6 +10,7 @@ import Util.FuncType;
 
 public class GlobalScope extends Scope {
     public HashMap<String, Scope> classInfo = new HashMap<String, Scope>();
+    public HashMap<String, Integer> name2pos = new HashMap<String, Integer>();
     public HashMap<String, Integer> count = new HashMap<String, Integer>(); // store number of variables sharing a name  
 
     GlobalScope(Scope s, ASTNode n) {

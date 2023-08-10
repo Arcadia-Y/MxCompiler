@@ -405,6 +405,11 @@ public class SemanticChecker implements ASTVisitor{
             if (t != null) {
                 it.t = t;
                 it.isLvalue = t.baseType == BaseType.FUNC ? false : true;
+                if (s.node instanceof ClassDecl) {
+                    if (t.baseType == BaseType.FUNC)
+                        it.name = currentClass + "." + it.name;
+                    return;
+                }
                 var cnt = s.rename.get(n);
                 if (cnt != null)
                     it.name = n + "." + cnt;
