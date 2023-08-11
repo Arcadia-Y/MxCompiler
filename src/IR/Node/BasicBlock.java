@@ -4,8 +4,11 @@ import java.util.ArrayList;
 
 public class BasicBlock extends IRNode {
     public String label;
-    public ArrayList<Instruction> ins;
+    public ArrayList<Instruction> ins = new ArrayList<Instruction>();
 
+    public BasicBlock(String n) {
+        label = n;
+    }
     public void add(Instruction i) {
         ins.add(i);
     }

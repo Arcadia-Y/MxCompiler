@@ -19,7 +19,7 @@ public class Call extends Instruction {
         if (res == null)
             ret = "call void " + name;
         else 
-            ret = res.name + " = call " + ty.toString() + " " + name;
+            ret = res.name + " = call " + ty.toString() + " @" + name;
         ret += "(";
         if (!args.isEmpty())
             ret += args.get(0).toString();

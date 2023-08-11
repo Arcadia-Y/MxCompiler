@@ -1,6 +1,8 @@
+
+import java.io.InputStream;
+
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
-import java.io.*;
 import Parser.MxLexer;
 import Parser.MxParser;
 import Semantic.SemanticChecker;
@@ -9,23 +11,10 @@ import Util.Error.Error;
 import Util.Error.MxErrorListener;
 import AST.*;
 
-public class test {
-    private static boolean checkSema(String path) throws Exception {
-        BufferedReader reader = new BufferedReader(new FileReader(path));
-        boolean ans = true;
-        while (reader.ready()) {
-            String line = reader.readLine();
-            if (line.contains("Verdict")) {
-                if (line.contains("Success"))
-                    ans = true;
-                else 
-                    ans = false;
-                break;
-            }
-        }
-        reader.close();
-        try {
-            InputStream is = new FileInputStream(path);
+public class Compiler {
+    private static void checkSema() throws Exception {
+     try {
+            InputStream is = System.in;
             MxLexer lexer = new MxLexer(CharStreams.fromStream(is));
             lexer.removeErrorListeners();
             lexer.addErrorListener(new MxErrorListener());
@@ -43,25 +32,24 @@ public class test {
             //System.out.println("Finish symbol collection.");
             SemanticChecker checker = new SemanticChecker();
             checker.visit(prog);
-            return ans;
+            System.out.println("Semantic: \033[01;32mPASS\033[0m");
         } catch (Error e) {
-            System.out.println(e.toString());
-            return !ans;
+            throw e;
         }
     }
-
     public static void main(String[] args) throws Exception {
-        BufferedReader r = new BufferedReader(new FileReader("testcases/sema/judgelist.txt"));
-        while (r.ready()) {
-            String path = r.readLine();
-            path = "testcases/sema/" + path;
-            if (checkSema(path))
-                System.out.println("\033[01;32mPASS\033[0m: " + path + "\n");
-            else {
-                System.out.println("WRONG ANSWER: " + path);
-                break;
-            }
+        if (args.length == 0) {
+            System.out.println("Usage: java Compiler <filename>");
+            return;
+        } else if (args[0].equals("-fsyntax-only")) {
+            System.out.println("Semantic check");
+            checkSema();
+        } else if (args[0].equals("-S")) {
+            System.out.println("Generate assembly code");
+            return;
+        } else {
+            System.out.println("Unknown option");
+            return;
         }
-        r.close();
     }
 }

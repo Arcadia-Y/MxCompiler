@@ -2,15 +2,19 @@ package IR.Node;
 
 import java.util.ArrayList;
 
-import Util.Type;
+import IR.Type.*;
 
 public class FuncDecl extends IRNode {
     public Type ty;
-    public ArrayList<Type> args;
+    public ArrayList<Type> args = new ArrayList<Type>();
     public String name;
     
+    public FuncDecl(Type t, String n) {
+        ty = t;
+        name = n;
+    }
     public String toString() {
-        String ret = "declare " + ty.toString() + " " + name + "(";
+        String ret = "declare " + ty.toString() + " @" + name + "(";
         if (!args.isEmpty())
             ret += args.get(0).toString();
         for (int i = 1; i < args.size(); i++)
