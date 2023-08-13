@@ -131,6 +131,7 @@ public class IRBuilder implements ASTVisitor {
             name2global.put(i.id, v);
             if (i.init != null) {
                 i.init.accept(this);
+                getValue(i.init);
                 curBB.add(new Store(resReg, v));
             }
         }
@@ -146,6 +147,7 @@ public class IRBuilder implements ASTVisitor {
             curBB.add(new Alloca(v, ty));
             if (i.init != null) {
                 i.init.accept(this);
+                getValue(i.init);
                 curBB.add(new Store(resReg, v));
             }
         }
@@ -166,7 +168,7 @@ public class IRBuilder implements ASTVisitor {
 
         mod.funcDefs.add(curFunc);
         curBB = curFunc.addBB();
-        if (it.name == "main") {
+        if (it.name.equals("main")) {
             curBB.add(new Call(null, voidType, "_mx_init"));
         }
         
@@ -293,7 +295,7 @@ public class IRBuilder implements ASTVisitor {
         Register cond = resReg;
         BasicBlock loopBB = curFunc.addBB();
         BasicBlock endBB = curFunc.addBB();
-        condBB.exit(new Br(cond, loopBB, endBB));
+        curBB.exit(new Br(cond, loopBB, endBB));
         breakStack.addLast(endBB);
         curBB = loopBB;
         it.stmt.accept(this);
@@ -453,11 +455,13 @@ public class IRBuilder implements ASTVisitor {
         // array
         if (it.obj.t.arrayLayer != 0) {
             resFuncName = "_array.size";
+            methodFlag = true;
             return;
         }
         // string
         if (it.obj.t.baseType == BaseType.STRING) {
             resFuncName = "string." + it.memName.name;
+            methodFlag = true;
             return;
         }
         // class
@@ -784,7 +788,6 @@ public class IRBuilder implements ASTVisitor {
 
     @Override
     public void visit(NewExpr it) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visit'");
+        
     }
 }

@@ -45,7 +45,7 @@ int getInt() {
 }
 
 char* toString(int x) {
-    char* buf = malloc(12);
+    char* buf = malloc(16);
     sprintf(buf, "%d", x);
     return buf;
 }

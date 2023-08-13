@@ -25,6 +25,7 @@ public class BasicBlock extends IRNode {
             ret += item.toString();
             ret += '\n';
         }
+        if (exitins != null)
         ret += exitins.toString();
         ret += '\n';
         return ret;
