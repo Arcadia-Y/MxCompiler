@@ -34,7 +34,6 @@ public class SymbolCollector {
     }
     public Scope visit(ClassDecl node) {
         var ret = new Scope(global, node);
-        int pos = 0;
         int construtCount = 0;
         for (var del : node.mem) {
             if (del instanceof FuncDecl) {
@@ -57,8 +56,6 @@ public class SymbolCollector {
                     if (ret.table.containsKey(item.id))
                         throw new SemanticError("member variable name redefined", item.pos);
                     ret.table.put(item.id, varDecls.t.t);
-                    global.name2pos.put(node.name + "." + item.id, pos);
-                    pos++;
                 }
             }
         }

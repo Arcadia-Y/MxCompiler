@@ -9,7 +9,10 @@ public class StructDecl {
     public ArrayList<Type> mem = new ArrayList<Type>();
 
     public StructDecl(String n) {
-        name = n;
+        name = "%class." + n;
+    }
+    public int size() {
+        return 4 * mem.size();
     }
     public String toString() {
         String ret = name + " = type {";

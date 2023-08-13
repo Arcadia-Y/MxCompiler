@@ -7,10 +7,12 @@ import IR.Type.Type;
 public class FuncDef extends IRNode {
     public Type ty;
     public String name;
-    public ArrayList<Var> args;
-    public ArrayList<BasicBlock> blocks;
-    public int regCnt = 0;
-    public int BBCnt = 0;
+    public ArrayList<Var> args = new  ArrayList<Var>();
+    public ArrayList<BasicBlock> blocks = new ArrayList<BasicBlock>();
+    public Var retVar;
+    public BasicBlock retBB;
+    private int regCnt = 0;
+    private int BBCnt = 0;
 
     public FuncDef(Type t, String n) {
         ty = t;
@@ -20,13 +22,13 @@ public class FuncDef extends IRNode {
         return blocks.get(blocks.size()-1);
     }
     public BasicBlock addBB() {
-        BasicBlock ret = new BasicBlock(""+BBCnt);
+        BasicBlock ret = new BasicBlock("_BB"+BBCnt);
         blocks.add(ret);
         BBCnt++;
         return ret;
     }
     public Var newUnname(Type t) {
-        Var ret = new Var(t, "%" + regCnt);
+        Var ret = new Var(t, "%_" + regCnt);
         regCnt++;
         return ret;
     }

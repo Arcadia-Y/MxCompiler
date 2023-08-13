@@ -17,7 +17,7 @@ public class Call extends Instruction {
     public String toString() {
         String ret;
         if (res == null)
-            ret = "call void " + name;
+            ret = "call void @" + name;
         else 
             ret = res.name + " = call " + ty.toString() + " @" + name;
         ret += "(";

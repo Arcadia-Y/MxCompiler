@@ -6,6 +6,8 @@ public class Ret extends Instruction {
         value = r;
     }
     public String toString() {
+        if (value == null)
+            return "ret void";
         return "ret " + value.toString();
     }
 }

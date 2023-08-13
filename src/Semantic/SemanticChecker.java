@@ -424,7 +424,7 @@ public class SemanticChecker implements ASTVisitor{
         if (currentClass == null)
             throw new SemanticError("this cannot be used outside class", it.pos);
         it.t = new ClassType(currentClass);
-        it.isLvalue = true;
+        it.isLvalue = false;
     }
     @Override
     public void visit(BoolConst it) {
