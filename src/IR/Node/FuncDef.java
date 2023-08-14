@@ -9,8 +9,6 @@ public class FuncDef extends IRNode {
     public String name;
     public ArrayList<Var> args = new  ArrayList<Var>();
     public ArrayList<BasicBlock> blocks = new ArrayList<BasicBlock>();
-    public Var retVar;
-    public BasicBlock retBB;
     private int regCnt = 0;
     private int BBCnt = 0;
 

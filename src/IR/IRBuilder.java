@@ -91,7 +91,6 @@ public class IRBuilder implements ASTVisitor {
         curFunc = null;
         curBB = null;
         name2local = null;
-        initFunc.getLastBlock().exit(new Ret(null));
         // function
         for (var item : it.decls)
             if (!(item instanceof VarDecl))
@@ -179,15 +178,6 @@ public class IRBuilder implements ASTVisitor {
             curBB.add(new Call(null, voidType, "_mx_init"));
         }
         
-        if (!(retType instanceof VoidType)) { // only for non-void function
-            curFunc.retBB = curFunc.addBB();
-            curFunc.retVar = new Var(ptrType, "%return");
-            curBB.add(new Alloca(curFunc.retVar, retType));
-            Var res = curFunc.newUnname(retType);
-            curFunc.retBB.add(new Load(res, retType, curFunc.retVar));
-            curFunc.retBB.exit(new Ret(res));
-        }
-
         for (var i : it.para) {
             Type ty = transType(i.t.t);
             Var arg = curFunc.newUnname(ty);
@@ -202,10 +192,10 @@ public class IRBuilder implements ASTVisitor {
         if (!curBB.isend()) {
             if (retType instanceof VoidType)
                 curBB.exit(new Ret(null));
-            else {
-                if (curFunc.name.equals("main"))
-                    curBB.add(new Store(new IntConst(0), curFunc.retVar));
-                curBB.exit(new Br(curFunc.retBB));
+            else if (retType instanceof IntType){
+                curBB.exit(new Ret(new IntConst(0)));
+            } else {
+                curBB.exit(new Ret(new NullConst()));
             }
         }
         curFunc = null;
@@ -380,8 +370,7 @@ public class IRBuilder implements ASTVisitor {
         }
         it.expr.accept(this);
         getValue(it.expr);
-        curBB.add(new Store(resReg, curFunc.retVar));
-        curBB.exit(new Br(curFunc.retBB));
+        curBB.exit(new Ret(resReg));
     }
 
     @Override
