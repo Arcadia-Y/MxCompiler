@@ -1,8 +1,10 @@
 package IR;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 
 import AST.*;
 import IR.Node.*;
@@ -27,6 +29,7 @@ public class IRBuilder implements ASTVisitor {
     FuncDef curFunc;
     BasicBlock curBB;
 
+    boolean constructFlag = false;
     boolean methodFlag = false;
     Var thisPtr;
     
@@ -117,14 +120,18 @@ public class IRBuilder implements ASTVisitor {
         for (var i : it.inits) {
             Var v = new Var(ptrType, "@" + i.id);
             Register reg;
-            switch (it.t.t.baseType) {
-            case INT:
-                reg = new IntConst(0);
-                break;
-            case BOOL:
-                reg = new BoolConst(false);
-                break;
-            default:
+            if (it.t.t.arrayLayer == 0) {
+                switch (it.t.t.baseType) {
+                case INT:
+                    reg = new IntConst(0);
+                    break;
+                case BOOL:
+                    reg = new BoolConst(false);
+                    break;
+                default:
+                    reg = new NullConst();
+                }
+            } else {
                 reg = new NullConst();
             }
             mod.globals.add(new GlobalDecl(v, reg));
@@ -215,6 +222,14 @@ public class IRBuilder implements ASTVisitor {
         for (var item : it.mem)
             if (!(item instanceof VarDecl))
                 item.accept(this);
+        if (!constructFlag) {
+            FuncDef construct = new FuncDef(voidType, curClass + "." + curClass);
+            construct.args.add(construct.newUnname(ptrType));
+            BasicBlock tmpBB = construct.addBB();
+            tmpBB.exit(new Ret(null));
+            mod.funcDefs.add(construct);
+        }
+        constructFlag = false;
         curClass = null;
         classScope = null;
         curStruct = null;
@@ -222,13 +237,14 @@ public class IRBuilder implements ASTVisitor {
 
     @Override
     public void visit(ConstructDecl it) {
+        constructFlag = true;
         curFunc = new FuncDef(voidType, curClass + "." + it.name);
         mod.funcDefs.add(curFunc);
         curBB = curFunc.addBB();
         name2local = new HashMap<String, Var>();
-        Var thisReg = new Var(ptrType, "%this");
-        curFunc.args.add(thisReg);
-        name2local.put("this", thisReg);
+        thisPtr = new Var(ptrType, "%this");
+        curFunc.args.add(thisPtr);
+        name2local.put("this", thisPtr);
 
 
         it.block.accept(this);
@@ -237,6 +253,7 @@ public class IRBuilder implements ASTVisitor {
         curFunc = null;
         curBB = null;
         name2local = null;
+        thisPtr = null;
     }
 
     @Override
@@ -297,11 +314,13 @@ public class IRBuilder implements ASTVisitor {
         BasicBlock endBB = curFunc.addBB();
         curBB.exit(new Br(cond, loopBB, endBB));
         breakStack.addLast(endBB);
+        continueStack.addLast(condBB);
         curBB = loopBB;
         it.stmt.accept(this);
         if (!curBB.isend())
             curBB.exit(new Br(condBB));
         breakStack.removeLast();
+        continueStack.removeLast();
         curBB = endBB;
     }
 
@@ -439,6 +458,7 @@ public class IRBuilder implements ASTVisitor {
         Var arr = curFunc.newUnname(ptrType);
         curBB.add(new Load(arr, ptrType, (Var) resReg));
         it.index.accept(this);
+        getValue(it.index);
         Register index = resReg;
         Type ty = transType(it.t);
         Var res = curFunc.newUnname(ptrType);
@@ -467,12 +487,12 @@ public class IRBuilder implements ASTVisitor {
         // class
         String cName = ((ClassType) it.obj.t).name;
         if (it.t.baseType == BaseType.FUNC) { // method
-            resFuncName = cName + "." + it.memName;
+            resFuncName = cName + "." + it.memName.name;
             methodFlag = true;
             return;
         }
         // member variable
-        int pos = name2pos.get(cName + "." + it.memName);
+        int pos = name2pos.get(cName + "." + it.memName.name);
         Var res = curFunc.newUnname(ptrType);
         GEP ins = new GEP(res, new StructType(cName), (Var)resReg);
         ins.index.add(new IntConst(0));
@@ -600,7 +620,7 @@ public class IRBuilder implements ASTVisitor {
             resReg = res;
             return;
         }
-        // INT
+        // INT or PTR
         it.l.accept(this);
         getValue(it.l);
         Register l = resReg;
@@ -763,6 +783,7 @@ public class IRBuilder implements ASTVisitor {
         Var res = new Var(ptrType, "@.str." + stringCnt);
         stringCnt++;
         mod.strings.add(new StringGlobal(res, it.value));
+        string2var.put(it.value, res);
         resReg = res;
     }
 
@@ -788,6 +809,86 @@ public class IRBuilder implements ASTVisitor {
 
     @Override
     public void visit(NewExpr it) {
-        
+        if (it.t.arrayLayer == 0) {
+            String cName = ((ClassType)it.t).name;
+            int size = name2struct.get(cName).size();
+            Var res = curFunc.newUnname(ptrType);
+            Call malloc = new Call(res, ptrType, "new.malloc");
+            malloc.args.add(new IntConst(size));
+            curBB.add(malloc);
+            Call initCall = new Call(null, voidType, cName + "." + cName);
+            initCall.args.add(res);
+            curBB.add(initCall);
+            resReg = res;
+            return;
+        }
+        ArrayList<Register> inits = new ArrayList<Register>();
+        for (var i : it.init) {
+            i.accept(this);
+            getValue(i);
+            inits.add(resReg);
+        }
+        transNewToFor(it.t.baseType, it.t.arrayLayer, inits);
+    }
+
+    private void transNewToFor(Util.Type.BaseType baseType, int arrayLayer, List<Register> inits) {
+        if (inits.size() == 1) {
+            Register size = inits.get(0);
+            Var res = curFunc.newUnname(ptrType);
+            Call func;
+            if (arrayLayer == 1) {
+                switch (baseType) {
+                case INT:
+                    func = new Call(res, ptrType, "new.intArray");
+                    break;
+                case BOOL:
+                    func = new Call(res, ptrType, "new.boolArray");
+                    break;
+                default:
+                    func = new Call(res, ptrType, "new.ptrArray");
+                }
+            } else {
+                func = new Call(res, ptrType, "new.ptrArray");
+            }
+            func.args.add(size);
+            curBB.add(func);
+            resReg = res;
+            return;
+        }
+        Register size0 = inits.get(0);
+        Var res = curFunc.newUnname(ptrType);
+        Call newFunc = new Call(res, ptrType, "new.ptrArray");
+        newFunc.args.add(size0);
+        curBB.add(newFunc);
+
+        Var iPtr = curFunc.newUnname(ptrType);
+        curBB.add(new Alloca(iPtr, intType));
+        curBB.add(new Store(new IntConst(0), iPtr));
+        BasicBlock condBB = curFunc.addBB();
+        BasicBlock loopBB = curFunc.addBB();
+        BasicBlock stepBB = curFunc.addBB();
+        BasicBlock endBB = curFunc.addBB();
+        curBB.exit(new Br(condBB));
+        Var iValue = curFunc.newUnname(intType);
+        Var cmpRes = curFunc.newUnname(boolType);
+        condBB.add(new Load(iValue, intType, iPtr));
+        condBB.add(new Icmp(cmpRes, "slt", iValue, size0));
+        condBB.exit(new Br(cmpRes, loopBB, endBB));
+        Var nexti = curFunc.newUnname(intType);
+        stepBB.add(new BinaryInst(nexti, "add", iValue, new IntConst(1)));
+        stepBB.add(new Store(nexti, iPtr));
+        stepBB.exit(new Br(condBB));
+
+        curBB = loopBB;
+        transNewToFor(baseType, arrayLayer-1, inits.subList(1, inits.size()));
+        Var elemPtr = curFunc.newUnname(ptrType);
+        GEP gep = new GEP(elemPtr, ptrType, res);
+        gep.index.add(iValue);
+        curBB.add(gep);
+        curBB.add(new Store(resReg, elemPtr));
+        curBB.exit(new Br(stepBB));
+
+        curBB = endBB;
+        resReg = res;
     }
 }

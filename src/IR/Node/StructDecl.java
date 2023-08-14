@@ -12,7 +12,7 @@ public class StructDecl {
         name = "%class." + n;
     }
     public int size() {
-        return 4 * mem.size();
+        return 8 * mem.size();
     }
     public String toString() {
         String ret = name + " = type {";

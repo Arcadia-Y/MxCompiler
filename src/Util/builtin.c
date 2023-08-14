@@ -16,12 +16,12 @@ int strcmp(const char *s1, const char *s2);
 void* memcpy(void *dest, const void *src, size_t n);
 void* malloc(size_t n);
 
-void print(char* s) {
-    printf("%s", s);
+void print(char* str) {
+    printf("%s", str);
 }
 
-void println(char* s) {
-    printf("%s\n", s);
+void println(char* str) {
+    printf("%s\n", str);
 }
 
 void printInt(int x) {

@@ -22,11 +22,10 @@ public class BasicBlock extends IRNode {
     public String toString() {
         String ret = label + ":\n";
         for (var item : ins) {
-            ret += item.toString();
+            ret += "    " + item.toString();
             ret += '\n';
         }
-        if (exitins != null)
-        ret += exitins.toString();
+        ret += "    " + exitins.toString();
         ret += '\n';
         return ret;
     }
