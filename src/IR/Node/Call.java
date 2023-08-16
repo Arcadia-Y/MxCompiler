@@ -2,6 +2,7 @@ package IR.Node;
 
 import java.util.ArrayList;
 
+import IR.IRVisitor;
 import IR.Type.Type;
 
 public class Call extends Instruction {
@@ -27,5 +28,8 @@ public class Call extends Instruction {
             ret += ", " + args.get(i).toString();
         ret += ")";
         return ret;
+    }
+    public void accept(IRVisitor v) {
+        v.visit(this);
     }
 }

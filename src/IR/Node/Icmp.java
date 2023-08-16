@@ -1,5 +1,6 @@
 package IR.Node;
 
+import IR.IRVisitor;
 import IR.Type.Type;
 
 public class Icmp extends Instruction {
@@ -16,5 +17,8 @@ public class Icmp extends Instruction {
     }
     public String toString() {
         return res.name + " = icmp " + cond + " " + op1.toString() + ", " + op2.valueString();
+    }
+    public void accept(IRVisitor v) {
+        v.visit(this);
     }
 }

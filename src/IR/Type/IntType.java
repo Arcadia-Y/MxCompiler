@@ -9,4 +9,8 @@ public class IntType extends Type{
     public String toString() {
         return "i" + bits;
     }
+    @Override
+    public boolean isBool() {
+        return bits == 1;
+    }
 }

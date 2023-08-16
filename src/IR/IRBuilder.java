@@ -149,6 +149,7 @@ public class IRBuilder implements ASTVisitor {
         Type ty = transType(it.t.t);
         for (var i : it.inits) {
             Var v = new Var(ptrType, "%" + i.id);
+            curFunc.locals.add(v);
             name2local.put(i.id, v);
             curBB.add(new Alloca(v, ty));
             if (i.init != null) {
@@ -183,6 +184,7 @@ public class IRBuilder implements ASTVisitor {
             Var arg = curFunc.newUnname(ty);
             curFunc.args.add(arg);
             Var v = new Var(ptrType, "%" + i.name);
+            curFunc.locals.add(v);
             name2local.put(i.name, v);
             curBB.add(new Alloca(v, ty));
             curBB.add(new Store(arg, v));
@@ -392,7 +394,7 @@ public class IRBuilder implements ASTVisitor {
     private void getValue(Expr it) {
         if (it.isLvalue) {
             Type ty = transType(it.t);
-            Var res = curFunc.newUnname(ty);
+            Var res = curFunc.addUnname(ty);
             curBB.add(new Load(res, ty, (Var)resReg));
             resReg = res;
         }
@@ -403,9 +405,9 @@ public class IRBuilder implements ASTVisitor {
         it.expr.accept(this);
         Var varPtr = (Var) resReg;
         Type intT = intType;
-        Var res = curFunc.newUnname(intT);
+        Var res = curFunc.addUnname(intT);
         curBB.add(new Load(res, intT, varPtr));
-        Var newVal = curFunc.newUnname(intT);
+        Var newVal = curFunc.addUnname(intT);
         switch (it.op) {
         case "++":
             curBB.add(new BinaryInst(newVal, "add", res, new IntConst(1)));
@@ -425,7 +427,7 @@ public class IRBuilder implements ASTVisitor {
         Type rType = transType(fType.retType);
         Var res = null;
         if (!(rType instanceof VoidType))
-            res = curFunc.newUnname(rType);
+            res = curFunc.addUnname(rType);
         Call call = new Call(res, rType, funcName);
         // class method
         if (methodFlag) { 
@@ -444,13 +446,13 @@ public class IRBuilder implements ASTVisitor {
     @Override
     public void visit(Subscript it) {
         it.array.accept(this);
-        Var arr = curFunc.newUnname(ptrType);
+        Var arr = curFunc.addUnname(ptrType);
         curBB.add(new Load(arr, ptrType, (Var) resReg));
         it.index.accept(this);
         getValue(it.index);
         Register index = resReg;
         Type ty = transType(it.t);
-        Var res = curFunc.newUnname(ptrType);
+        Var res = curFunc.addUnname(ptrType);
         GEP ins = new GEP(res, ty, arr);
         ins.index.add(index);
         curBB.add(ins);
@@ -482,7 +484,7 @@ public class IRBuilder implements ASTVisitor {
         }
         // member variable
         int pos = name2pos.get(cName + "." + it.memName.name);
-        Var res = curFunc.newUnname(ptrType);
+        Var res = curFunc.addUnname(ptrType);
         GEP ins = new GEP(res, new StructType(cName), (Var)resReg);
         ins.index.add(new IntConst(0));
         ins.index.add(new IntConst(pos));
@@ -496,7 +498,7 @@ public class IRBuilder implements ASTVisitor {
         switch (it.op) {
         case "!":
         {
-            Var res = curFunc.newUnname(boolType);
+            Var res = curFunc.addUnname(boolType);
             getValue(it.expr);
             curBB.add(new BinaryInst(res, "xor", resReg, new BoolConst(true)));
             resReg = res;
@@ -505,7 +507,7 @@ public class IRBuilder implements ASTVisitor {
         case "++":
         case "--":
         {
-            Var res = curFunc.newUnname(intType);
+            Var res = curFunc.addUnname(intType);
             Var varPtr = (Var) resReg;
             getValue(it.expr);
             String op = it.op.equals("++") ? "add" : "sub";
@@ -521,7 +523,7 @@ public class IRBuilder implements ASTVisitor {
         }
         case "-":
         {
-            Var res = curFunc.newUnname(intType);
+            Var res = curFunc.addUnname(intType);
             getValue(it.expr);
             curBB.add(new BinaryInst(res, "sub", new IntConst(0), resReg));
             resReg = res;
@@ -529,7 +531,7 @@ public class IRBuilder implements ASTVisitor {
         }
         case "~":
         {
-            Var res = curFunc.newUnname(intType);
+            Var res = curFunc.addUnname(intType);
             getValue(it.expr);
             curBB.add(new BinaryInst(res, "xor", resReg, new IntConst(-1)));
             resReg = res;
@@ -560,7 +562,7 @@ public class IRBuilder implements ASTVisitor {
             curBB.exit(new Br(endBB));
             continueBB = curBB;
             curBB = endBB;
-            Var res = curFunc.newUnname(boolType);
+            Var res = curFunc.addUnname(boolType);
             Phi phiIns = new Phi(res, boolType);
             if (it.op.equals("&&")) 
                 phiIns.add(new BoolConst(false), originBB);
@@ -578,7 +580,7 @@ public class IRBuilder implements ASTVisitor {
             it.r.accept(this);
             getValue(it.r);
             Register rStr = resReg;
-            Var res = curFunc.newUnname(ptrType);
+            Var res = curFunc.addUnname(ptrType);
             Call func = null;
             switch(it.op) {
             case "+":
@@ -669,11 +671,11 @@ public class IRBuilder implements ASTVisitor {
             break;
         }
         if (binOp != null) {
-            Var res = curFunc.newUnname(intType);
+            Var res = curFunc.addUnname(intType);
             curBB.add(new BinaryInst(res, binOp, l, r));
             resReg = res;
         } else {
-            Var res = curFunc.newUnname(boolType);
+            Var res = curFunc.addUnname(boolType);
             curBB.add(new Icmp(res, icmpOp, l, r));
             resReg = res;
         }
@@ -700,7 +702,7 @@ public class IRBuilder implements ASTVisitor {
         curBB = endBB;
         if (it.t.baseType != BaseType.VOID) {
             Type ty = transType(it.t);
-            Var res = curFunc.newUnname(ty);
+            Var res = curFunc.addUnname(ty);
             Phi ins = new Phi(res, ty);
             ins.add(trueReg, trueBB);
             ins.add(falseReg, falseBB);
@@ -740,7 +742,7 @@ public class IRBuilder implements ASTVisitor {
             }
             // member variable
             int pos = name2pos.get(curClass + "." + it.name);
-            Var res = curFunc.newUnname(ptrType);
+            Var res = curFunc.addUnname(ptrType);
             GEP ins = new GEP(res, new StructType(curClass), thisPtr);
             ins.index.add(new IntConst(0));
             ins.index.add(new IntConst(pos));
@@ -801,7 +803,7 @@ public class IRBuilder implements ASTVisitor {
         if (it.t.arrayLayer == 0) {
             String cName = ((ClassType)it.t).name;
             int size = name2struct.get(cName).size();
-            Var res = curFunc.newUnname(ptrType);
+            Var res = curFunc.addUnname(ptrType);
             Call malloc = new Call(res, ptrType, "new.malloc");
             malloc.args.add(new IntConst(size));
             curBB.add(malloc);
@@ -823,7 +825,7 @@ public class IRBuilder implements ASTVisitor {
     private void transNewToFor(Util.Type.BaseType baseType, int arrayLayer, List<Register> inits) {
         if (inits.size() == 1) {
             Register size = inits.get(0);
-            Var res = curFunc.newUnname(ptrType);
+            Var res = curFunc.addUnname(ptrType);
             Call func;
             if (arrayLayer == 1) {
                 switch (baseType) {
@@ -845,12 +847,12 @@ public class IRBuilder implements ASTVisitor {
             return;
         }
         Register size0 = inits.get(0);
-        Var res = curFunc.newUnname(ptrType);
+        Var res = curFunc.addUnname(ptrType);
         Call newFunc = new Call(res, ptrType, "new.ptrArray");
         newFunc.args.add(size0);
         curBB.add(newFunc);
 
-        Var iPtr = curFunc.newUnname(ptrType);
+        Var iPtr = curFunc.addUnname(ptrType);
         curBB.add(new Alloca(iPtr, intType));
         curBB.add(new Store(new IntConst(0), iPtr));
         BasicBlock condBB = curFunc.addBB();
@@ -858,19 +860,19 @@ public class IRBuilder implements ASTVisitor {
         BasicBlock stepBB = curFunc.addBB();
         BasicBlock endBB = curFunc.addBB();
         curBB.exit(new Br(condBB));
-        Var iValue = curFunc.newUnname(intType);
-        Var cmpRes = curFunc.newUnname(boolType);
+        Var iValue = curFunc.addUnname(intType);
+        Var cmpRes = curFunc.addUnname(boolType);
         condBB.add(new Load(iValue, intType, iPtr));
         condBB.add(new Icmp(cmpRes, "slt", iValue, size0));
         condBB.exit(new Br(cmpRes, loopBB, endBB));
-        Var nexti = curFunc.newUnname(intType);
+        Var nexti = curFunc.addUnname(intType);
         stepBB.add(new BinaryInst(nexti, "add", iValue, new IntConst(1)));
         stepBB.add(new Store(nexti, iPtr));
         stepBB.exit(new Br(condBB));
 
         curBB = loopBB;
         transNewToFor(baseType, arrayLayer-1, inits.subList(1, inits.size()));
-        Var elemPtr = curFunc.newUnname(ptrType);
+        Var elemPtr = curFunc.addUnname(ptrType);
         GEP gep = new GEP(elemPtr, ptrType, res);
         gep.index.add(iValue);
         curBB.add(gep);

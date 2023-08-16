@@ -1,5 +1,7 @@
 package IR.Node;
 
+import IR.IRVisitor;
+
 public class Br extends Instruction {
     public Register cond;
     public BasicBlock trueBB, falseBB;
@@ -15,5 +17,8 @@ public class Br extends Instruction {
         if (cond == null) 
             return "br label %" + trueBB.label;
         return "br " + cond.toString() + ", label %" + trueBB.label + ", label %" + falseBB.label;
+    }
+    public void accept(IRVisitor v) {
+        v.visit(this);
     }
 }

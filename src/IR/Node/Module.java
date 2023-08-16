@@ -120,7 +120,7 @@ public class Module extends IRNode {
     public String toString() {
         String ret = "";
         for (var it : structs) 
-            ret += it.toString() + "\n\n";
+            ret += it.toString() + "\n";
         for (var it : globals)
             ret += it.toString() + "\n";
         for (var it : strings)

@@ -1,5 +1,4 @@
 #define bool _Bool
-#define sys64
 
 #ifdef sys64
     typedef unsigned long size_t;

@@ -1,8 +1,8 @@
 package IR.Node;
 
 public class StringGlobal {
-    Var reg;
-    String str;
+    public Var reg;
+    public String str;
     public StringGlobal(Var register, String content) {
         reg = register;
         str = content;

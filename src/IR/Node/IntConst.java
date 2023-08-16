@@ -1,5 +1,6 @@
 package IR.Node;
 
+import IR.IRVisitor;
 import IR.Type.IntType;
 
 public class IntConst extends Register {
@@ -13,5 +14,8 @@ public class IntConst extends Register {
     }
     public String valueString() {
         return "" + value;
+    }
+    public void accept(IRVisitor v) {
+        v.visit(this);
     }
 }

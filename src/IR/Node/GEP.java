@@ -2,6 +2,7 @@ package IR.Node;
 
 import java.util.ArrayList;
 
+import IR.IRVisitor;
 import IR.Type.Type;
 
 public class GEP extends Instruction {
@@ -21,5 +22,8 @@ public class GEP extends Instruction {
             ret += it.toString();
         }
         return ret;
+    }
+    public void accept(IRVisitor v) {
+        v.visit(this);
     }
 }

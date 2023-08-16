@@ -1,5 +1,7 @@
 package IR.Node;
 
+import IR.IRVisitor;
+
 public class Store extends Instruction {
     public Register value;
     public Var ptr;
@@ -9,5 +11,8 @@ public class Store extends Instruction {
     }
     public String toString() {
         return "store " + value.toString() + ", " + ptr.toString();
+    }
+    public void accept(IRVisitor v) {
+        v.visit(this);
     }
 }

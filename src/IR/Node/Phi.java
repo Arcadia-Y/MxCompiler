@@ -2,11 +2,12 @@ package IR.Node;
 
 import java.util.ArrayList;
 
+import IR.IRVisitor;
 import IR.Type.Type;
 
 public class Phi extends Instruction {
-    Var res;
-    Type ty;
+    public Var res;
+    public Type ty;
     public class Pair {
         public Register reg;
         public BasicBlock BB;
@@ -32,5 +33,8 @@ public class Phi extends Instruction {
         for (int i = 1; i < list.size(); i++)
             ret += ", " + list.get(i).toString();
         return ret; 
+    }
+    public void accept(IRVisitor v) {
+        v.visit(this);
     }
 }

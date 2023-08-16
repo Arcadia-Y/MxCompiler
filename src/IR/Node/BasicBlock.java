@@ -5,7 +5,7 @@ import java.util.ArrayList;
 public class BasicBlock extends IRNode {
     public String label;
     public ArrayList<Instruction> ins = new ArrayList<Instruction>();
-    private Instruction exitins;
+    public Instruction exitins;
 
     public BasicBlock(String n) {
         label = n;
