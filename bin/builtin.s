@@ -407,6 +407,6 @@ new.ptrArray:
 	.asciz	"%d\n"
 	.size	.L.str.3, 4
 
-	.ident	"Ubuntu clang version 14.0.0-1ubuntu1.1"
+	.ident	"Ubuntu clang version 15.0.7"
 	.section	".note.GNU-stack","",@progbits
 	.addrsig

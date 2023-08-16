@@ -690,10 +690,12 @@ public class IRBuilder implements ASTVisitor {
         curBB.exit(new Br(resReg, trueBB, falseBB));
         curBB = trueBB;
         it.trueExpr.accept(this);
+        getValue(it.trueExpr);
         Register trueReg = resReg;
         trueBB = curBB;
         curBB = falseBB;
         it.falseExpr.accept(this);
+        getValue(it.falseExpr);
         Register falseReg = resReg;
         falseBB = curBB;
         BasicBlock endBB = curFunc.addBB();
