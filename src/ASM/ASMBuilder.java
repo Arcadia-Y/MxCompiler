@@ -175,6 +175,8 @@ public class ASMBuilder implements IRVisitor {
     public void visit(BasicBlock it) {
         curBB = findBB(it);
         curFunc.blocks.add(curBB);
+        for (var i : it.phiMap.values())
+            i.accept(this);
         for (var i : it.ins)
             i.accept(this);
         it.exitins.accept(this);

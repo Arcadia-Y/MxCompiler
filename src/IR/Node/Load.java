@@ -1,5 +1,8 @@
 package IR.Node;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import IR.IRVisitor;
 import IR.Type.Type;
 
@@ -17,5 +20,20 @@ public class Load extends Instruction {
     }
     public void accept(IRVisitor v) {
         v.visit(this);
+    }
+    @Override
+    public Var getDef() {
+        return res;
+    }
+    @Override
+    public List<Var> getUse() {
+        var ret = new ArrayList<Var>();
+        if (ptr.name.charAt(0) != '@')
+            ret.add(ptr);
+        return ret;
+    }
+    @Override
+    public void replace(Var v, Register r) {
+        ptr = (Var)r;
     }
 }

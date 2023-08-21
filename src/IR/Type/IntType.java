@@ -1,7 +1,7 @@
 package IR.Type;
 
 public class IntType extends Type{
-    int bits;
+    public int bits;
 
     public IntType(int b) {
         bits = b;

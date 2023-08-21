@@ -563,13 +563,12 @@ public class IRBuilder implements ASTVisitor {
             continueBB = curBB;
             curBB = endBB;
             Var res = curFunc.addUnname(boolType);
-            Phi phiIns = new Phi(res, boolType);
+            Phi phiIns = curBB.addPhi(res, boolType);
             if (it.op.equals("&&")) 
                 phiIns.add(new BoolConst(false), originBB);
             else 
                 phiIns.add(new BoolConst(true), originBB);
             phiIns.add(rReg, continueBB);
-            curBB.add(phiIns);
             resReg = res;
             return;
         }
@@ -687,32 +686,41 @@ public class IRBuilder implements ASTVisitor {
         getValue(it.cond);
         BasicBlock trueBB = curFunc.addBB();
         BasicBlock falseBB = curFunc.addBB();
-        curBB.exit(new Br(resReg, trueBB, falseBB));
+        Register condReg = resReg;
+
+        Var resPtr = null;
+        Type ty = transType(it.t);
+        boolean nonvoid = it.t.baseType != BaseType.VOID;
+        if (nonvoid) {
+            resPtr = curFunc.newUnname(ty);
+            curBB.add(new Alloca(resPtr, ty));
+            curFunc.locals.add(resPtr);
+        }
+        curBB.exit(new Br(condReg, trueBB, falseBB));
+
         curBB = trueBB;
         it.trueExpr.accept(this);
         getValue(it.trueExpr);
         Register trueReg = resReg;
         trueBB = curBB;
+
         curBB = falseBB;
         it.falseExpr.accept(this);
         getValue(it.falseExpr);
         Register falseReg = resReg;
         falseBB = curBB;
+
         BasicBlock endBB = curFunc.addBB();
+        if (nonvoid) {
+            trueBB.add(new Store(trueReg, resPtr));
+            falseBB.add(new Store(falseReg, resPtr));
+            Var res = curFunc.newUnname(ty);
+            endBB.add(new Load(res, ty, resPtr));
+            resReg = res;
+        }
         trueBB.exit(new Br(endBB));
         falseBB.exit(new Br(endBB));
         curBB = endBB;
-        if (it.t.baseType != BaseType.VOID) {
-            Type ty = transType(it.t);
-            Var res = curFunc.addUnname(ty);
-            Phi ins = new Phi(res, ty);
-            ins.add(trueReg, trueBB);
-            ins.add(falseReg, falseBB);
-            curBB.add(ins);
-            resReg = res;
-        } else {
-            resReg = null;
-        }
     }
 
     @Override
@@ -855,6 +863,7 @@ public class IRBuilder implements ASTVisitor {
         curBB.add(newFunc);
 
         Var iPtr = curFunc.addUnname(ptrType);
+        curFunc.locals.add(iPtr);
         curBB.add(new Alloca(iPtr, intType));
         curBB.add(new Store(new IntConst(0), iPtr));
         BasicBlock condBB = curFunc.addBB();

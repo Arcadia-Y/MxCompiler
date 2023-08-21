@@ -1,6 +1,7 @@
 package IR.Node;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import IR.IRVisitor;
 import IR.Type.Type;
@@ -36,5 +37,25 @@ public class Phi extends Instruction {
     }
     public void accept(IRVisitor v) {
         v.visit(this);
+    }
+    @Override
+    public Var getDef() {
+        return res;
+    }
+    @Override
+    public List<Var> getUse() {
+        var ret = new ArrayList<Var>();
+        for (var i : list)
+            if (i.reg instanceof Var && ((Var)i.reg).name.charAt(0) != '@')
+                ret.add((Var)i.reg);
+        return ret;
+    }
+    @Override
+    public void replace(Var v, Register r) {
+        for (int i = 0; i < list.size(); i++) {
+            var it = list.get(i);
+            if (it.reg == v)
+                it.reg = r;
+        }
     }
 }
