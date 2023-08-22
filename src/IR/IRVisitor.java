@@ -18,6 +18,7 @@ public interface IRVisitor {
     public void visit(IntConst it);
     public void visit(Load it);
     public void visit(Module it);
+    public void visit(Move it);
     public void visit(NullConst it);
     public void visit(Phi it);
     public void visit(Ret it);

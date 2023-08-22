@@ -417,5 +417,11 @@ public class ASMBuilder implements IRVisitor {
     public void visit(Var it) {
         throw new UnsupportedOperationException("Unimplemented method 'visit'");
     }
+
+    @Override
+    public void visit(Move it) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'visit'");
+    }
     
 }

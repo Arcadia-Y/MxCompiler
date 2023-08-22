@@ -19,6 +19,8 @@ public class BasicBlock extends IRNode {
 
     public HashSet<Var> defs = new HashSet<Var>();
     public HashSet<Var> uses = new HashSet<Var>();
+    public HashSet<Var> livein = new HashSet<>();
+    public HashSet<Var> liveout = new HashSet<>();
 
     public boolean visited = false;
     public int RPOid;
