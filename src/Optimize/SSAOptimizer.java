@@ -319,34 +319,13 @@ public class SSAOptimizer {
                     }
             }
         }
+        // find dead code
         for (var item : DCEMap.values())
             if (!item.useful) {
                 if (item.defby != null && !(item.defby instanceof Call))
                     toremove.add(item.defby);
                 toremove.addAll(item.useby);
             }
-        // find dead code
-        worklist.clear();
-        worklist.addAll(DCEMap.keySet());
-        while (!worklist.isEmpty()) {
-            var it = worklist.iterator();
-            var reg = it.next();
-            it.remove();
-            var info = DCEMap.get(reg);
-            var uses = info.useby;
-            if (uses.isEmpty()) {
-                var def = info.defby;
-                if (def != null && !(def instanceof Call)) {
-                    toremove.add(def);
-                    var uselist = def.getUse();
-                    if (uselist != null)
-                        for (var used : uselist) {
-                            DCEMap.get(used).useby.remove(def);
-                            worklist.add(used);
-                        }
-                }
-            }
-        }
         // remove deadcode
         for (var b : func.blocks) {
             var phiIt = b.phiMap.entrySet().iterator();
