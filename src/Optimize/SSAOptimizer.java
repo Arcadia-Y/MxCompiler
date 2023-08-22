@@ -55,6 +55,13 @@ public class SSAOptimizer {
             for (var i : b.ins) {
                 var def = i.getDef();
                 var uses = i.getUse();
+                if (i instanceof Store) {
+                    var store = (Store) i;
+                    if (func.locals.contains(store.ptr)) {
+                        def = store.ptr;
+                        uses.remove(def);
+                    }
+                }
                 if (uses != null)
                     for (var u : uses) {
                         b.uses.add(u);
@@ -118,15 +125,16 @@ public class SSAOptimizer {
             var i = it.next();
             var def = i.getDef();
             var uses = i.getUse();
-            if (i instanceof Phi) continue;
             if (i instanceof Alloca) {
                 it.remove();
                 continue;
             }
-            if (func.locals.contains(def)) {
+            if (i instanceof Store) {
                 var store = (Store) i;
-                local2reg.put(def.newName(), store.value);
-                continue;
+                if (func.locals.contains(store.ptr)) {
+                    local2reg.put(store.ptr.newName(), store.value);
+                    continue;
+                }
             }
             if (i instanceof Load && uses != null && !uses.isEmpty() && func.locals.contains(uses.get(0))) {
                 var load = (Load) i;
@@ -165,10 +173,12 @@ public class SSAOptimizer {
         it = b.ins.iterator();
         while (it.hasNext()) {
             var i = it.next();
-            var def = i.getDef();
-            if (func.locals.contains(def)) {
-                def.pop();
-                it.remove();
+            if (i instanceof Store) {
+                var def = ((Store)i).ptr;
+                if (func.locals.contains(def)) {
+                    def.pop();
+                    it.remove();
+                }
             }
         }
         for (var v : b.phiMap.keySet())
@@ -232,6 +242,7 @@ public class SSAOptimizer {
     private static class DCEInfo {
         public Instruction defby;
         public HashSet<Instruction> useby = new HashSet<>();
+        public boolean useful = false;
     }
     private HashMap<Var, DCEInfo> DCEMap = new HashMap<>();
 
@@ -242,7 +253,11 @@ public class SSAOptimizer {
         DCEMap.put(v, ret);
         return ret;
     }
-
+    private boolean isUseful(Instruction i) {
+        if (i instanceof Store || i instanceof Call || i instanceof Load)
+            return true;
+        return false;
+    }
     private void collectDCEInfo(FuncDef func) {
         DCEMap.clear();
         for (var b : func.blocks) {
@@ -258,30 +273,61 @@ public class SSAOptimizer {
             for (var i : b.ins) {
                 var def = i.getDef();
                 var uses =i.getUse();
-                if (i instanceof Store) {
-                    uses.add(def);
-                    def = null;
-                }
+                boolean useful = isUseful(i);
                 if (def != null)
                     getDCEInfo(def).defby = i;
                 if (uses != null)
-                    for (var u : uses)
-                        getDCEInfo(u).useby.add(i);
+                    for (var u : uses) {
+                        var info = getDCEInfo(u);
+                        info.useby.add(i);
+                        if (useful) info.useful = true;
+                    }
             }
             // exit ins
             var uses = b.exitins.getUse();
             if (uses != null)
-                for (var u : uses)
-                    getDCEInfo(u).useby.add(b.exitins);
+                for (var u : uses) {
+                    var info = getDCEInfo(u);
+                    info.useby.add(b.exitins);
+                    info.useful = true;
+                }
         }
     }
 
     private void deadCodeElimination(FuncDef func) {
         collectDCEInfo(func);
         HashSet<Var> worklist = new HashSet<>();
-        worklist.addAll(DCEMap.keySet());
         HashSet<Instruction> toremove = new HashSet<>();
+        // mark useful
+        for (var item : DCEMap.entrySet())
+            if (item.getValue().useful)
+                worklist.add(item.getKey());
+        while (!worklist.isEmpty()) {
+            var it = worklist.iterator();
+            var reg = it.next();
+            it.remove();
+            var info = DCEMap.get(reg);
+            if (info.defby != null) {
+                var uses = info.defby.getUse();
+                if (uses != null)
+                    for (var u : uses) {
+                        var useInfo = DCEMap.get(u);
+                        if (!useInfo.useful) {
+                            useInfo.useful = true;
+                            worklist.add(u);
+                        }
+                    }
+            }
+        }
+        for (var item : DCEMap.values())
+            if (!item.useful) {
+                if (item.defby != null && !(item.defby instanceof Call))
+                    toremove.add(item.defby);
+                toremove.addAll(item.useby);
+            }
         // find dead code
+        worklist.clear();
+        worklist.addAll(DCEMap.keySet());
         while (!worklist.isEmpty()) {
             var it = worklist.iterator();
             var reg = it.next();

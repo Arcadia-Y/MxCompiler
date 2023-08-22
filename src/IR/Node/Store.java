@@ -20,8 +20,6 @@ public class Store extends Instruction {
     }
     @Override
     public Var getDef() {
-        if (ptr.name.charAt(0) != '@')
-            return ptr;
         return null;
     }
     @Override
@@ -29,6 +27,8 @@ public class Store extends Instruction {
         var ret = new ArrayList<Var>();
         if (value instanceof Var && ((Var)value).name.charAt(0) != '@')
             ret.add((Var)value);
+        if (ptr instanceof Var && ((Var)ptr).name.charAt(0) != '@')
+            ret.add((Var)ptr);
         return ret;
     }
     @Override

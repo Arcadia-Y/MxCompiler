@@ -3,7 +3,6 @@ package Optimize;
 import java.util.HashSet;
 
 import IR.Node.Module;
-import IR.Node.Store;
 import IR.Node.BasicBlock;
 import IR.Node.FuncDef;
 import IR.Node.Var;
@@ -42,10 +41,6 @@ public class LivenessAnalyzer {
         for (var i : b.ins) {
             var def = i.getDef();
             var uses = i.getUse();
-            if (i instanceof Store) {
-                def = null;
-                uses.add(def);
-            }
             if (uses != null)
                 for (var u : uses)
                     b.uses.add(u);
