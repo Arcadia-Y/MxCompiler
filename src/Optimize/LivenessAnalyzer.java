@@ -43,13 +43,15 @@ public class LivenessAnalyzer {
             var uses = i.getUse();
             if (uses != null)
                 for (var u : uses)
-                    b.uses.add(u);
+                    if (!b.defs.contains(u))
+                        b.uses.add(u);
             if (def != null) 
                 b.defs.add(def);
         }
         var uses = b.exitins.getUse();
         if (uses != null)
             for (var u : uses)
+                if (!b.defs.contains(u))
                 b.uses.add(u);
     }
 
@@ -61,9 +63,8 @@ public class LivenessAnalyzer {
             newOut.addAll(s.livein);
         newIn.addAll(newOut);
         var defs = b.defs;
-        for (var x : newIn)
-            if (defs.contains(x))
-                newIn.remove(x);
+        for (var d : defs)
+            newIn.remove(d);
         newIn.addAll(b.uses);
         if (!newIn.equals(b.livein) || !newOut.equals(b.liveout)) {
             b.livein = newIn;

@@ -231,7 +231,8 @@ public class SSAOptimizer {
                 for (var p : phi.list) {
                     if (alterMap.containsKey(p.BB))
                         p.BB = alterMap.get(p.BB);
-                    p.BB.add(new Move(dest, p.reg));
+                    if (dest != p.reg)
+                        p.BB.add(new Move(dest, p.reg));
                 }
             }
             b.phiMap.clear();
@@ -254,7 +255,7 @@ public class SSAOptimizer {
         return ret;
     }
     private boolean isUseful(Instruction i) {
-        if (i instanceof Store || i instanceof Call || i instanceof Load)
+        if (i instanceof Store || i instanceof Call)
             return true;
         return false;
     }
