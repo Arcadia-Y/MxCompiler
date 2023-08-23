@@ -149,12 +149,14 @@ public class ASMBuilder implements IRVisitor {
         // deal with a0 to a7
         for (int i = 0; i < 8 && i < f.args.size(); i++) {
             Var v = f.args.get(i);
+            if (f.deadArg.contains(v)) continue;
             var pos = regSet.callerReg.get("a" + i);
             posMap.put(v, pos);
             argMap.put(pos, v);
         }
         for (int i = 0; i < 8 && i < f.args.size(); i++) {
             Var tomove = f.args.get(i);
+            if (f.deadArg.contains(tomove)) continue;
             var src = posMap.get(tomove);
             var dest = regMap.get(tomove);
             argMap.remove(src);
@@ -164,7 +166,7 @@ public class ASMBuilder implements IRVisitor {
             }
             // check possible collision
             var destReg = (Register) dest;
-            if (!argMap.containsKey(dest)) {
+            if (!argMap.containsKey(destReg)) {
                 moveReg(destReg, src);
                 continue;
             }

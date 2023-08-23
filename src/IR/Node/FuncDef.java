@@ -22,6 +22,7 @@ public class FuncDef extends IRNode {
     public HashMap<Var, StoreUnit> regMap = new HashMap<>();
     public HashSet<ASM.Storage.Register> usedSaveReg = new HashSet<>(); 
     public int frameSize;
+    public HashSet<Var> deadArg = new HashSet<>();
 
     public FuncDef(Type t, String n) {
         ty = t;

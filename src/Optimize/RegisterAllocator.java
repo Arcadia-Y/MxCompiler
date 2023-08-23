@@ -139,6 +139,12 @@ public class RegisterAllocator {
         for (var i : intList)
             if (callPos.ceiling(i.start + 1) != callPos.ceiling(i.end))
                 i.acrossCall = true;
+        // mark dead args
+        for (var a : func.args) {
+            var info = intInfo.get(a);
+            if (info.end == -1) 
+                func.deadArg.add(a);
+        }
     }
 
     private void linearAllocate() {

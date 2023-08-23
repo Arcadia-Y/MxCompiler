@@ -43,7 +43,7 @@ void origin(int N)
 		step[i] = new int[N];
         for (j = 0; j < N; j ++ )
         step[i][j] = 0;
-    }
+    }	
 }
 
 bool check(int a) {

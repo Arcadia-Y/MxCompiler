@@ -116,6 +116,7 @@ int main(){
 	x.init(a);
 	print("vector x: ");
 	println(x.tostring());
+
 	vector y = new vector;
 	y.copy(x);
 	if (y.set(3, 817)){
