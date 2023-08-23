@@ -13,6 +13,7 @@ import Util.Error.Error;
 import Util.Error.MxErrorListener;
 import AST.*;
 import IR.IRBuilder;
+import Optimize.*;
 
 public class Compiler {
     private static void checkSema() throws Exception {
@@ -62,7 +63,16 @@ public class Compiler {
 
         IRBuilder irBuilder = new IRBuilder();
         IR.Node.Module mod = irBuilder.getIR(prog);
-        ASMBuilder asmBuilder = new ASMBuilder();
+
+        SSAOptimizer ssa = new SSAOptimizer();
+        ssa.constructSSA(mod);
+        ssa.optimize(mod);
+        ssa.destroySSA(mod);
+        new LivenessAnalyzer().run(mod);
+        RegisterAllocator regAlloc = new RegisterAllocator();
+        regAlloc.run(mod);
+
+        ASMBuilder asmBuilder = new ASMBuilder(regAlloc.regSet);
         ASMModule asm = asmBuilder.generateASM(mod);
         System.out.print(asm.toString());
     }

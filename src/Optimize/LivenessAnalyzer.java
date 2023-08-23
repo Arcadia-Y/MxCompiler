@@ -17,8 +17,19 @@ public class LivenessAnalyzer {
     }
 
     private void initPass(FuncDef func) {
-        for (var b : func.blocks)
+        var startBB = func.blocks.get(0);
+        startBB.defs.clear();
+        startBB.uses.clear();
+        startBB.defs.addAll(func.args);
+        initBB(startBB);
+        var it = func.blocks.iterator();
+        it.next();
+        while (it.hasNext()) {
+            var b = it.next();
+            b.defs.clear();
+            b.uses.clear();
             initBB(b);
+        }
     }
 
     private void solvePass(FuncDef func) {
@@ -36,8 +47,6 @@ public class LivenessAnalyzer {
     }
 
     private void initBB(BasicBlock b) {
-        b.defs.clear();
-        b.uses.clear();
         for (var i : b.ins) {
             var def = i.getDef();
             var uses = i.getUse();

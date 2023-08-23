@@ -23,10 +23,82 @@ public class ASMBuilder implements IRVisitor {
     int raOffset, s1Offset;
     boolean methodFlag = false;
 
+    HashMap<Register, StackSlot> saveMap = new HashMap<>();
+    HashMap<Integer, StackSlot> argumentMap = new HashMap<>();
+    StackSlot raSlot;
+    public RegisterSet regSet;
+    
+    public ASMBuilder(RegisterSet registerSet) {
+        regSet = registerSet;
+    }
+
     public ASMModule generateASM(Module it) {
         asm = new ASMModule();
         visit(it);
         return asm;
+    }
+
+    /*
+     * stack layout:
+     * arg 8
+     * arg 9
+     * ...
+     * ra
+     * [saved registers]
+     * [spill]
+     */
+    private void getStackLayout(FuncDef func) {
+        frameSize = func.frameSize;
+        saveMap.clear();
+        argumentMap.clear();
+        for (var s : func.usedSaveReg) {
+            saveMap.put(s, new StackSlot(frameSize));
+            frameSize += 4;
+        }
+        raSlot = new StackSlot(frameSize);
+        frameSize += 4;
+        for (int i = func.args.size(); i > 7; i--) {
+            argumentMap.put(i, new StackSlot(frameSize));
+            frameSize += 4;
+        }
+    }
+
+    // if reg locates in register, return the register
+    // else load the reg into dest, retiurn dest
+    // only used for NON-STORE instruction
+    private Register load(IR.Node.Register reg, Register dest) {
+        if (reg instanceof IntConst) {
+            curBB.add(new Instruction("li "+ dest + ", " + ((IntConst)reg).value));
+            return dest;
+        }
+        if (reg instanceof BoolConst) {
+            boolean val = ((BoolConst)reg).value;
+            if (!val)
+                return regSet.zero;
+            curBB.add(new Instruction("li " + dest + ", 1"));
+            return dest;
+        }
+        if (reg instanceof NullConst) {
+            return regSet.zero;
+        }
+        Var var = (Var) reg;
+        // const string
+        if (var.name.charAt(0) == '@') {
+            curBB.add(new Instruction("lui " + dest + ", %hi(" + var.name.substring(1) + ")"));
+            curBB.add(new Instruction("addi " + dest + ", " + dest + ", %lo(" + var.name.substring(1) + ")"));
+            return dest;
+        }
+        // local
+        var locat = regMap.get(var);
+        if (locat instanceof Register)
+            return (Register) locat;
+        curBB.add(new Instruction("lw " + dest + ", " + locat));
+        return dest;
+    }
+
+    private void moveReg(Register dest, Register src) {
+        if (dest == src) return;
+        curBB.add(new Instruction("mv " + dest + ", " + src));    
     }
 
     @Override
@@ -58,14 +130,134 @@ public class ASMBuilder implements IRVisitor {
         bb2bb = new HashMap<BasicBlock, Block>();
         curBB = newBB();
         curFunc.blocks.add(curBB);
-        regAlloc(it);
+        getStackLayout(it);
+        regMap = it.regMap;
         curBB.add(new Instruction("addi sp, sp, -" + frameSize));
-        curBB.add(new Instruction("sw ra, " + raOffset + "(sp)"));
+        curBB.add(new Instruction("sw ra, " + raSlot));
+        storeSaveReg();
+        moveDefArg(it);
         for (var b : it.blocks)
             visit(b);
-        methodFlag = false;
         curFunc = null;
         curBB = null;
+    }
+
+    // move funcDef argument to its allocated location
+    private void moveDefArg(FuncDef f) {
+        HashMap<Var, Register> posMap = new HashMap<>();
+        HashMap<Register, Var> argMap = new HashMap<>();
+        // deal with a0 to a7
+        for (int i = 0; i < 8 && i < f.args.size(); i++) {
+            Var v = f.args.get(i);
+            var pos = regSet.callerReg.get("a" + i);
+            posMap.put(v, pos);
+            argMap.put(pos, v);
+        }
+        for (int i = 0; i < 8 && i < f.args.size(); i++) {
+            Var tomove = f.args.get(i);
+            var src = posMap.get(tomove);
+            var dest = regMap.get(tomove);
+            argMap.remove(src);
+            if (dest instanceof StackSlot) {
+                curBB.add(new Instruction("sw " + src + ", " + dest));
+                continue;
+            }
+            // check possible collision
+            var destReg = (Register) dest;
+            if (!argMap.containsKey(dest)) {
+                moveReg(destReg, src);
+                continue;
+            }
+            // swap the location
+            Var toSrcVar = argMap.get(destReg);
+            moveReg(regSet.t0, destReg);
+            moveReg(destReg, src);
+            moveReg(src, regSet.t0);
+            posMap.put(toSrcVar, src);
+            argMap.put(src, toSrcVar);
+        }
+        // move a8...
+        for (int i = 8; i < f.args.size(); i++) {
+            var src = argumentMap.get(i);
+            var dest = regMap.get(f.args.get(i));
+            if (dest instanceof Register) {
+                curBB.add(new Instruction("lw " + dest + ", " + src));
+                continue;
+            }
+            curBB.add(new Instruction("lw " + regSet.t0 + ", " + src));
+            curBB.add(new Instruction("sw " + regSet.t0 + ", " + dest));
+        }
+    }
+
+    private StoreUnit getCallPos(int i) {
+        if (i < 8) return regSet.callerReg.get("a"+i);
+        return new StackSlot((7 - i) * 4);
+    }
+
+    private void moveCallArg(Call fCall) {
+        HashMap<Var, Register> posMap = new HashMap<>();
+        HashMap<Var, Integer> argIndex = new HashMap<>();
+        HashMap<Register, Var> argMap = new HashMap<>();
+        // deal with arguments locting on a0-a7
+        for (int i = 0; i < fCall.args.size(); i++) {
+            var a = fCall.args.get(i);
+            if (a instanceof Var) {
+                var pos = regMap.get(a);
+                if (pos instanceof Register && ((Register)pos).name.charAt(0) == 'a') {
+                    posMap.put((Var)a, (Register)pos);
+                    argIndex.put((Var)a, i);
+                    argMap.put((Register)pos, (Var)a);
+                }
+            }
+        }
+        // similar algorithm with moveDefArg
+        for (var a : posMap.keySet()) {
+            var src = posMap.get(a);
+            var dest = getCallPos(argIndex.get(a));
+            argMap.remove(src);
+            if (dest instanceof StackSlot) {
+                curBB.add(new Instruction("sw " + src + ", " + dest));
+                continue;
+            }
+            // check
+            var destReg = (Register) dest;
+            if (!argMap.containsKey(destReg)) {
+                moveReg(destReg, src);
+                continue;
+            }
+            // swap
+            Var toSrcVar = argMap.get(destReg);
+            moveReg(regSet.t0, destReg);
+            moveReg(destReg, src);
+            moveReg(src, regSet.t0);
+            posMap.put(toSrcVar, src);
+            argMap.put(src, toSrcVar); 
+        }
+        // put other arguments
+        for (int i = 0; i < fCall.args.size() && i < 8; i++) {
+            var a = fCall.args.get(i);
+            if (argIndex.containsKey(a)) continue;
+            var dest = regSet.callerReg.get("a" + i);
+            var src = load(a, dest);
+            moveReg(dest, src);
+        }
+        for (int i = 8; i < fCall.args.size(); i++) {
+            var a = fCall.args.get(i);
+            if (argIndex.containsKey(a)) continue;
+            var dest = new StackSlot((7 - i) * 4);
+            var src = load(a, regSet.t0);
+            curBB.add(new Instruction("sw " + src + ", " + dest));
+        }
+    }
+    
+    private void storeSaveReg() {
+        for (var i : saveMap.entrySet())
+            curBB.add(new Instruction("sw " + i.getKey() + ", " + i.getValue()));
+    }
+
+    private void loadSaveReg() {
+        for (var i : saveMap.entrySet())
+            curBB.add(new Instruction("lw " + i.getKey() + ", " + i.getValue()));
     }
 
     private Block newBB() {
@@ -73,95 +265,6 @@ public class ASMBuilder implements IRVisitor {
         BBcnt++;
         return ret;
     }
-
-    /*
-     * stack layout:
-     * arguments (if more than 8, top down: 8,9,10...)
-     * s1 (caller saved for thisPtr)
-     * ra
-     * locals
-     * unnames
-     */
-    private void regAlloc(FuncDef it) {
-        frameSize = 0;
-        regMap = new HashMap<Var, StoreUnit>();
-        for (var i : it.unnames) {
-            regMap.put(i, new StackSlot(frameSize));
-            frameSize += 4;
-        }
-        allocMap = new HashMap<Var, Integer>();
-        for (var i : it.locals) {
-            allocMap.put(i, frameSize);
-            frameSize += 4;
-        }
-        raOffset = frameSize;
-        frameSize += 4;
-
-        if (!it.args.isEmpty()) {
-            var arg = it.args.get(0);
-            if (arg.name.equals("%this")) {
-                methodFlag = true;
-                s1Offset = frameSize;
-                frameSize += 4;
-                curBB.add(new Instruction("mv s1, a0"));
-                regMap.put(arg, new Register("s1"));
-            } else {
-                regMap.put(arg, new Register("a0"));
-            }
-        }
-
-        for (int i = 1; i < 8 && i < it.args.size(); i++)
-            regMap.put(it.args.get(i), new Register("a" + i));
-        for (int i = it.args.size() - 1; i > 7; i--) {
-            regMap.put(it.args.get(i), new StackSlot(frameSize));
-            frameSize += 4;
-        }
-    }
-
-    private void loadTo(IR.Node.Register reg, String rd) {
-        if (reg instanceof IntConst) {
-            curBB.add(new Instruction("li "+ rd + ", " + ((IntConst)reg).value));
-            return;
-        }
-        if (reg instanceof BoolConst) {
-            int val = ((BoolConst)reg).value ? 1 : 0;
-            curBB.add(new Instruction("li "+ rd + ", " + val));
-            return;
-        }
-        if (reg instanceof NullConst) {
-            curBB.add(new Instruction("li "+ rd + ", 0"));
-            return;
-        }
-        Var var = (Var) reg;
-        // global string
-        if (var.name.charAt(0) == '@') {
-            curBB.add(new Instruction("lui " + rd + ", %hi(" + var.name.substring(1) + ")"));
-            curBB.add(new Instruction("addi " + rd + ", " + rd + ", %lo(" + var.name.substring(1) + ")"));
-            return;
-        }
-        // local
-        var locat = regMap.get(var);
-        if (locat instanceof Register) {
-            curBB.add(new Instruction("mv " + rd + ", " + ((Register)locat).name));
-            return;
-        }
-        curBB.add(new Instruction("lw " + rd + ", " + ((StackSlot)locat).offset + "(sp)"));
-    }
-
-    private void storeTo(IR.Node.Var var, String rd) {
-        // global string
-        if (var.name.charAt(0) == '@') {
-            curBB.add(new Instruction("sw " + rd + ", " + var.name.substring(1) + ", s0"));
-            return;
-        }
-        // local
-        var locat = regMap.get(var);
-        if (locat instanceof Register) {
-            curBB.add(new Instruction("mv " + ((Register)locat).name + ", " + rd));
-            return;
-        }
-        curBB.add(new Instruction("sw " + rd + ", " + ((StackSlot)locat).offset + "(sp)"));
-    } 
 
     private Block findBB(BasicBlock it) {
         if (bb2bb.containsKey(it))
@@ -175,8 +278,6 @@ public class ASMBuilder implements IRVisitor {
     public void visit(BasicBlock it) {
         curBB = findBB(it);
         curFunc.blocks.add(curBB);
-        for (var i : it.phiMap.values())
-            i.accept(this);
         for (var i : it.ins)
             i.accept(this);
         it.exitins.accept(this);
@@ -187,15 +288,30 @@ public class ASMBuilder implements IRVisitor {
         return;
     }
 
+    private void addBinaryInst(StoreUnit dest, String op, String op1, String op2) {
+        if (dest instanceof Register) {
+            curBB.add(new Instruction(op + " " + dest + ", " + op1 + ", " + op2));
+            return;
+        }
+        curBB.add(new Instruction(op + " t0, " + op1 + ", " + op2));
+        curBB.add(new Instruction("sw t0, " + dest));
+    }
+
+    private boolean checkRange(int x) {
+        return x >= -2048 && x <= 2047;
+    }
+
     @Override
     public void visit(BinaryInst it) {
-        loadTo(it.op1, "t0");
-        loadTo(it.op2, "t1");
         String binOp = "";
+        boolean immFlag = true;
+        boolean shiftFlag = false;
+        var dest = regMap.get(it.res);
         switch (it.op) {
         case "mul":
-        case "add":
         case "sub":
+            immFlag = false;
+        case "add":
         case "and":
         case "or":
         case "xor":
@@ -203,20 +319,42 @@ public class ASMBuilder implements IRVisitor {
             break;
         case "sdiv":
             binOp = "div";
+            immFlag = false;
             break;
         case "srem":
             binOp = "rem";
+            immFlag = false;
             break;
         case "shl" :
             binOp = "sll";
+            shiftFlag = true;
             break;
         case "ashr":
             binOp = "sra";
+            shiftFlag = true;
             break;
         }
-        curBB.add(new Instruction(binOp + " t2, t0, t1"));
-        storeTo(it.res, "t2");
-        
+        if (immFlag) {
+            if (it.op2 instanceof IntConst) {
+                var op2Val = ((IntConst)it.op2).value;
+                if (checkRange(op2Val)) {
+                    var op1Reg = load(it.op1, regSet.t0);
+                    addBinaryInst(dest, binOp + "i", op1Reg.toString(), ""+op2Val);
+                    return;
+                }
+            }
+            else if (it.op1 instanceof IntConst && !shiftFlag) {
+                var op1Val = ((IntConst)it.op1).value;
+                if (checkRange(op1Val)) {
+                    var op2Reg = load(it.op2, regSet.t0);
+                    addBinaryInst(dest, binOp + "i", op2Reg.toString(), ""+op1Val);
+                    return;
+                }
+            } 
+        }
+        var op1Reg = load(it.op1, regSet.t0);
+        var op2Reg = load(it.op2, regSet.ra);
+        addBinaryInst(dest, binOp, op1Reg.toString(), op2Reg.toString());
     }
 
     @Override
@@ -231,32 +369,23 @@ public class ASMBuilder implements IRVisitor {
             curBB.exit(new Instruction("j " + goal.label));
             return;
         }
-        loadTo(it.cond, "t0");
+        var condReg = load(it.cond, regSet.t0);
         Block trueBB = findBB(it.trueBB), falseBB = findBB(it.falseBB);
-        curBB.exit(new Instruction("bnez t0, " + trueBB.label));
+        curBB.exit(new Instruction("bnez " + condReg + ", " + trueBB.label));
         curBB.exit(new Instruction("j " + falseBB.label));
     }
 
     @Override
     public void visit(Call it) {
-        for (int i = 0; i < 8 && i < it.args.size(); i++)
-            loadTo(it.args.get(i), "a" + i);
-        int argOffset = -4;
-        for (int i = 8; i < it.args.size(); i++, argOffset -= 4) {
-            var reg = it.args.get(i);
-            loadTo(reg, "t0");
-            curBB.add(new Instruction("sw t0, " + argOffset + "(sp)"));
+        moveCallArg(it);
+        curBB.add(new Instruction("call " + it.name));
+        if (it.res != null) {
+            var dest = regMap.get(it.res);
+            if (dest instanceof Register)
+                moveReg((Register)dest, regSet.a0);
+            else
+                curBB.add(new Instruction("sw a0, " + dest));
         }
-        // save s1 for method
-        if (methodFlag) {
-            curBB.add(new Instruction("sw s1, " + s1Offset + "(sp)"));
-            curBB.add(new Instruction("call " + it.name));
-            curBB.add(new Instruction("lw s1, " + s1Offset + "(sp)"));
-        } else {
-            curBB.add(new Instruction("call " + it.name));
-        }
-        if (it.res != null)
-            storeTo(it.res, "a0");
     }
 
     @Override
@@ -268,51 +397,50 @@ public class ASMBuilder implements IRVisitor {
     public void visit(GEP it) {
         // array
         if (it.index.size() == 1) {
-            loadTo(it.ptr, "t0");
-            loadTo(it.index.get(0), "t1");
-            if (!it.ty.isBool()) 
-                curBB.add(new Instruction("slli t1, t1, 2"));
-            curBB.add(new Instruction("add t2, t0, t1"));
-            storeTo(it.res, "t2");
+            var ptrReg = load(it.ptr, regSet.t0);
+            var indexReg = load(it.index.get(0), regSet.ra);
+            if (!it.ty.isBool()) {
+                curBB.add(new Instruction("slli ra, " + indexReg + ", 2"));
+                indexReg = regSet.ra;
+            }
+            addBinaryInst(regMap.get(it.res), "add", ptrReg.toString(), indexReg.toString());
             return;
         }
         // class
         int offset = ((IntConst)it.index.get(1)).value * 4;
-        loadTo(it.ptr, "t0");
-        if (offset != 0)
-            curBB.add(new Instruction("addi t0, t0, " + offset));
-        storeTo(it.res, "t0");
+        var ptrReg = load(it.ptr, regSet.t0);
+        addBinaryInst(regMap.get(it.res), "addi", ptrReg.toString(), ""+offset);
     }
 
     @Override
     public void visit(Icmp it) {
-        loadTo(it.op1, "t0");
-        loadTo(it.op2, "t1");
+        var op1reg = load(it.op1, regSet.t0);
+        var op2reg = load(it.op2, regSet.ra);
+        var dest = regMap.get(it.res);
         switch (it.cond) {
         case "sle":
-            curBB.add(new Instruction("slt t2, t1, t0"));
-            curBB.add(new Instruction("xori t2, t2, 1"));
+            addBinaryInst(regSet.t0, "slt", op2reg.toString(), op1reg.toString());
+            addBinaryInst(dest, "xori", "t0", "1");
             break;
         case "sge":
-            curBB.add(new Instruction("slt t2, t0, t1"));
-            curBB.add(new Instruction("xori t2, t2, 1"));
+            addBinaryInst(regSet.t0, "slt", op1reg.toString(), op2reg.toString());
+            addBinaryInst(dest, "xori", "t0", "1");
             break;
         case "slt":
-            curBB.add(new Instruction("slt t2, t0, t1"));
+            addBinaryInst(dest, "slt", op1reg.toString(), op2reg.toString());
             break;
         case "sgt":
-            curBB.add(new Instruction("slt t2, t1, t0"));
+            addBinaryInst(dest, "slt", op2reg.toString(), op1reg.toString());
             break;
         case "eq":
-            curBB.add(new Instruction("sub t2, t0, t1"));
-            curBB.add(new Instruction("seqz t2, t2"));
+            addBinaryInst(regSet.t0, "sub", op1reg.toString(), op2reg.toString());
+            addBinaryInst(dest, "sltiu", "t0", "1");
             break;
         case "ne":
-            curBB.add(new Instruction("sub t2, t0, t1"));
-            curBB.add(new Instruction("snez t2, t2"));
+            addBinaryInst(regSet.t0, "sub", op1reg.toString(), op2reg.toString());
+            addBinaryInst(dest, "sltu", "x0", "t0");
             break;
         }
-        storeTo(it.res, "t2");
     }
 
     @Override
@@ -322,32 +450,30 @@ public class ASMBuilder implements IRVisitor {
 
     @Override
     public void visit(Load it) {
-        // alloc
-        if (allocMap.containsKey(it.ptr)) {
-            int offset = allocMap.get(it.ptr);
-            if (it.ty.isBool())
-                curBB.add(new Instruction("lb t0, " + offset + "(sp)"));
-            else 
-                curBB.add(new Instruction("lw t0, " + offset + "(sp)"));
-            storeTo(it.res, "t0");
-            return;
-        }
+        var dest = regMap.get(it.res);
         // global
         if (it.ptr.name.charAt(0) == '@') {
-            if (it.ty.isBool())
-                curBB.add(new Instruction("lb t0, " + it.ptr.name.substring(1)));
-            else 
-                curBB.add(new Instruction("lw t0, " + it.ptr.name.substring(1)));
-            storeTo(it.res, "t0");
+            if (dest instanceof Register) {
+                if (it.ty.isBool()) curBB.add(new Instruction("lb " + dest + ", " + it.ptr.name.substring(1)));
+                else    curBB.add(new Instruction("lw " + dest + ", " + it.ptr.name.substring(1)));
+                return;
+            }
+            // dest instanceof StackSlot
+            if (it.ty.isBool()) curBB.add(new Instruction("lb t0, " + it.ptr.name.substring(1)));
+            else    curBB.add(new Instruction("lw t0, " + it.ptr.name.substring(1)));
+            curBB.add(new Instruction("sw t0, " + dest));
             return;
         }
         // ptr
-        loadTo(it.ptr, "t0");
-        if (it.ty.isBool())
-            curBB.add(new Instruction("lb t1, 0(t0)"));
-        else 
-            curBB.add(new Instruction("lw t1, 0(t0)"));
-        storeTo(it.res, "t1");
+        var ptrReg = load(it.ptr, regSet.t0);
+        if (dest instanceof Register) {
+            if (it.ty.isBool()) curBB.add(new Instruction("lb " + dest + ", " + "0(" + ptrReg + ")"));
+            else    curBB.add(new Instruction("lw " + dest + ", " + "0(" + ptrReg + ")"));
+            return;
+        }
+        if (it.ty.isBool()) curBB.add(new Instruction("lb t0, " + "0(" + ptrReg + ")"));
+        else    curBB.add(new Instruction("lw t0, " + "0(" + ptrReg + ")"));
+        curBB.add(new Instruction("sw t0, " + dest));
         return;
     }
 
@@ -358,53 +484,38 @@ public class ASMBuilder implements IRVisitor {
 
     @Override
     public void visit(Phi it) {
-        var oringinBB = curBB;
-        for (var i : it.list) {
-            curBB = findBB(i.BB);
-            loadTo(i.reg, "s0");
-            var tomove = curBB.list.get(curBB.list.size()-1);
-            curBB.phi(tomove);
-            curBB.list.remove(tomove);
-        }
-        curBB = oringinBB;
-        storeTo(it.res, "s0");
+        throw new UnsupportedOperationException("Unimplemented method 'visit'");
     }
 
     @Override
     public void visit(Ret it) {
-        if (it.value != null)
-            loadTo(it.value, "a0");
-        curBB.add(new Instruction("lw ra, " + raOffset + "(sp)"));
+        if (it.value != null) {
+            var resReg = load(it.value, regSet.a0);
+            moveReg(regSet.a0, resReg);
+        }
+        loadSaveReg();
+        curBB.add(new Instruction("lw ra, " + raSlot));
         curBB.add(new Instruction("addi sp, sp, " + frameSize));
         curBB.exit(new Instruction("ret"));
     }
 
     @Override
     public void visit(Store it) {
-        loadTo(it.value, "t0");
-         // alloc
-         if (allocMap.containsKey(it.ptr)) {
-            int offset = allocMap.get(it.ptr);
-            if (it.value.ty.isBool())
-                curBB.add(new Instruction("sb t0, " + offset + "(sp)"));
-            else 
-                curBB.add(new Instruction("sw t0, " + offset + "(sp)"));
-            return;
-        }
+        var value = load(it.value, regSet.t0);
         // global
         if (it.ptr.name.charAt(0) == '@') {
             if (it.value.ty.isBool())
-                curBB.add(new Instruction("sb t0, " + it.ptr.name.substring(1) + ", t1"));
+                curBB.add(new Instruction("sb " + value + ", " + it.ptr.name.substring(1) + ", ra"));
             else 
-                curBB.add(new Instruction("sw t0, " + it.ptr.name.substring(1) + ", t1"));
+                curBB.add(new Instruction("sw " + value + ", " + it.ptr.name.substring(1) + ", ra"));
             return;
         }
-        loadTo(it.ptr, "t1");
+        var ptr = load(it.ptr, regSet.ra);
         // ptr
         if (it.value.ty.isBool())
-            curBB.add(new Instruction("sb t0, 0(t1)"));
+            curBB.add(new Instruction("sb " + value + ", " + "0(" + ptr + ")"));
         else 
-            curBB.add(new Instruction("sw t0, 0(t1)"));
+            curBB.add(new Instruction("sw " + value + ", " + "0(" + ptr + ")"));
         return;
     }
 
@@ -420,8 +531,15 @@ public class ASMBuilder implements IRVisitor {
 
     @Override
     public void visit(Move it) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visit'");
+        var dest = regMap.get(it.dest);
+        if (dest instanceof Register) {
+            var destReg = (Register) dest;
+            var src = load(it.src, destReg);
+            moveReg(destReg, src);
+            return;
+        }
+        var src = load(it.src, regSet.t0);
+        curBB.add(new Instruction("sw " + src + ", " + dest));
     }
     
 }

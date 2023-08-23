@@ -13,7 +13,6 @@ public class BasicBlock extends IRNode {
     public LinkedList<Instruction> ins = new LinkedList<>();
     public Instruction exitins;
 
-    public boolean returnFlag = false;
     public ArrayList<BasicBlock> pre = new ArrayList<>();
     public ArrayList<BasicBlock> succ = new ArrayList<>();
 
@@ -56,7 +55,6 @@ public class BasicBlock extends IRNode {
     }
     public void exit(Ret ret) {
         exitins = ret;
-        returnFlag = true;
     }
     public String toString() {
         String ret = label + ":\n";

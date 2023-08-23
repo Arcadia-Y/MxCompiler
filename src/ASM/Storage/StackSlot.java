@@ -5,4 +5,7 @@ public class StackSlot extends StoreUnit {
     public StackSlot(int offset_) {
         offset = offset_;
     }
+    public String toString() {
+        return offset + "(sp)";
+    }
 }

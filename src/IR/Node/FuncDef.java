@@ -2,8 +2,10 @@ package IR.Node;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 
+import ASM.Storage.StoreUnit;
 import IR.Type.Type;
 
 public class FuncDef extends IRNode {
@@ -16,6 +18,10 @@ public class FuncDef extends IRNode {
     public ArrayList<BasicBlock> RPO = null; // Reverse Post Order
     private int regCnt = 0;
     private int BBCnt = 0;
+
+    public HashMap<Var, StoreUnit> regMap = new HashMap<>();
+    public HashSet<ASM.Storage.Register> usedSaveReg = new HashSet<>(); 
+    public int frameSize;
 
     public FuncDef(Type t, String n) {
         ty = t;

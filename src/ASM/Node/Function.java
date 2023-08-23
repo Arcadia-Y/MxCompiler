@@ -3,7 +3,7 @@ package ASM.Node;
 import java.util.ArrayList;
 
 public class Function {
-    public String name;
+    public String name; 
     public ArrayList<Block> blocks = new ArrayList<Block>();
     public Function(String Name) {
         name = Name;
