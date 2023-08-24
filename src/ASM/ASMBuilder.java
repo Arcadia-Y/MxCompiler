@@ -44,7 +44,7 @@ public class ASMBuilder implements IRVisitor {
      * arg 9
      * ...
      * ra
-     * [saved registers]
+     * [callee-saved registers]
      * [spill]
      */
     private void getStackLayout(FuncDef func) {

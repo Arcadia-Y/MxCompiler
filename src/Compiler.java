@@ -69,7 +69,7 @@ public class Compiler {
         ssa.optimize(mod);
         ssa.destroySSA(mod);
         new LivenessAnalyzer().run(mod);
-        RegisterAllocator regAlloc = new RegisterAllocator();
+        LinearScanRegisterAllocator regAlloc = new LinearScanRegisterAllocator();
         regAlloc.run(mod);
 
         ASMBuilder asmBuilder = new ASMBuilder(regAlloc.regSet);
