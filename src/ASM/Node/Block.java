@@ -1,11 +1,11 @@
 package ASM.Node;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 
 public class Block {
     public String label;
-    public ArrayList<Instruction> list = new ArrayList<Instruction>();
-    public ArrayList<Instruction> exitIns = new ArrayList<Instruction>();
+    public LinkedList<Instruction> list = new LinkedList<Instruction>();
+    public LinkedList<Instruction> exitIns = new LinkedList<Instruction>();
     public Block(String name) {
         label = name;
     }

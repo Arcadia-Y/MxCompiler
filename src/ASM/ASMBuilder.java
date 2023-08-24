@@ -68,14 +68,14 @@ public class ASMBuilder implements IRVisitor {
     // only used for NON-STORE instruction
     private Register load(IR.Node.Register reg, Register dest) {
         if (reg instanceof IntConst) {
-            curBB.add(new Instruction("li "+ dest + ", " + ((IntConst)reg).value));
+            curBB.add(new Instruction("li", dest.toString(), ""+((IntConst)reg).value));
             return dest;
         }
         if (reg instanceof BoolConst) {
             boolean val = ((BoolConst)reg).value;
             if (!val)
                 return regSet.zero;
-            curBB.add(new Instruction("li " + dest + ", 1"));
+            curBB.add(new Instruction("li", dest.toString(), "1"));
             return dest;
         }
         if (reg instanceof NullConst) {
@@ -84,21 +84,21 @@ public class ASMBuilder implements IRVisitor {
         Var var = (Var) reg;
         // const string
         if (var.name.charAt(0) == '@') {
-            curBB.add(new Instruction("lui " + dest + ", %hi(" + var.name.substring(1) + ")"));
-            curBB.add(new Instruction("addi " + dest + ", " + dest + ", %lo(" + var.name.substring(1) + ")"));
+            curBB.add(new Instruction("lui", dest.toString(), "%hi(" + var.name.substring(1) + ")"));
+            curBB.add(new Instruction("addi", dest.toString(), dest.toString(), "%lo(" + var.name.substring(1) + ")"));
             return dest;
         }
         // local
         var locat = regMap.get(var);
         if (locat instanceof Register)
             return (Register) locat;
-        curBB.add(new Instruction("lw " + dest + ", " + locat));
+        curBB.add(new Instruction("lw", dest.toString(), locat.toString()));
         return dest;
     }
 
     private void moveReg(Register dest, Register src) {
         if (dest == src) return;
-        curBB.add(new Instruction("mv " + dest + ", " + src));    
+        curBB.add(new Instruction("mv", dest.toString(), src.toString()));    
     }
 
     @Override
@@ -132,8 +132,8 @@ public class ASMBuilder implements IRVisitor {
         curFunc.blocks.add(curBB);
         getStackLayout(it);
         regMap = it.regMap;
-        curBB.add(new Instruction("addi sp, sp, -" + frameSize));
-        curBB.add(new Instruction("sw ra, " + raSlot));
+        curBB.add(new Instruction("addi", "sp", "sp", "-" + frameSize));
+        curBB.add(new Instruction("sw", "ra", raSlot.toString()));
         storeSaveReg();
         moveDefArg(it);
         for (var b : it.blocks)
@@ -161,7 +161,7 @@ public class ASMBuilder implements IRVisitor {
             var dest = regMap.get(tomove);
             argMap.remove(src);
             if (dest instanceof StackSlot) {
-                curBB.add(new Instruction("sw " + src + ", " + dest));
+                curBB.add(new Instruction("sw", src.toString(), dest.toString()));
                 continue;
             }
             // check possible collision
@@ -183,11 +183,11 @@ public class ASMBuilder implements IRVisitor {
             var src = argumentMap.get(i);
             var dest = regMap.get(f.args.get(i));
             if (dest instanceof Register) {
-                curBB.add(new Instruction("lw " + dest + ", " + src));
+                curBB.add(new Instruction("lw", dest.toString(), src.toString()));
                 continue;
             }
-            curBB.add(new Instruction("lw " + regSet.t0 + ", " + src));
-            curBB.add(new Instruction("sw " + regSet.t0 + ", " + dest));
+            curBB.add(new Instruction("lw", "t0", src.toString()));
+            curBB.add(new Instruction("sw", "t0", dest.toString()));
         }
     }
 
@@ -218,7 +218,7 @@ public class ASMBuilder implements IRVisitor {
             var dest = getCallPos(argIndex.get(a));
             argMap.remove(src);
             if (dest instanceof StackSlot) {
-                curBB.add(new Instruction("sw " + src + ", " + dest));
+                curBB.add(new Instruction("sw", src.toString(), dest.toString()));
                 continue;
             }
             // check
@@ -248,18 +248,18 @@ public class ASMBuilder implements IRVisitor {
             if (argIndex.containsKey(a)) continue;
             var dest = new StackSlot((7 - i) * 4);
             var src = load(a, regSet.t0);
-            curBB.add(new Instruction("sw " + src + ", " + dest));
+            curBB.add(new Instruction("sw", src.toString(), dest.toString()));
         }
     }
     
     private void storeSaveReg() {
         for (var i : saveMap.entrySet())
-            curBB.add(new Instruction("sw " + i.getKey() + ", " + i.getValue()));
+            curBB.add(new Instruction("sw", i.getKey().toString(), i.getValue().toString()));
     }
 
     private void loadSaveReg() {
         for (var i : saveMap.entrySet())
-            curBB.add(new Instruction("lw " + i.getKey() + ", " + i.getValue()));
+            curBB.add(new Instruction("lw", i.getKey().toString(), i.getValue().toString()));
     }
 
     private Block newBB() {
@@ -292,11 +292,11 @@ public class ASMBuilder implements IRVisitor {
 
     private void addBinaryInst(StoreUnit dest, String op, String op1, String op2) {
         if (dest instanceof Register) {
-            curBB.add(new Instruction(op + " " + dest + ", " + op1 + ", " + op2));
+            curBB.add(new Instruction(op, dest.toString(), op1, op2));
             return;
         }
-        curBB.add(new Instruction(op + " t0, " + op1 + ", " + op2));
-        curBB.add(new Instruction("sw t0, " + dest));
+        curBB.add(new Instruction(op, "t0", op1, op2));
+        curBB.add(new Instruction("sw", "t0", dest.toString()));
     }
 
     private boolean checkRange(int x) {
@@ -368,25 +368,25 @@ public class ASMBuilder implements IRVisitor {
     public void visit(Br it) {
         if (it.cond == null) {
             Block goal = findBB(it.trueBB);
-            curBB.exit(new Instruction("j " + goal.label));
+            curBB.exit(new Instruction("j", goal.label));
             return;
         }
         var condReg = load(it.cond, regSet.t0);
         Block trueBB = findBB(it.trueBB), falseBB = findBB(it.falseBB);
-        curBB.exit(new Instruction("bnez " + condReg + ", " + trueBB.label));
-        curBB.exit(new Instruction("j " + falseBB.label));
+        curBB.exit(new Instruction("bnez", condReg.toString(), trueBB.label));
+        curBB.exit(new Instruction("j", falseBB.label));
     }
 
     @Override
     public void visit(Call it) {
         moveCallArg(it);
-        curBB.add(new Instruction("call " + it.name));
+        curBB.add(new Instruction("call", it.name));
         if (it.res != null) {
             var dest = regMap.get(it.res);
             if (dest instanceof Register)
                 moveReg((Register)dest, regSet.a0);
             else
-                curBB.add(new Instruction("sw a0, " + dest));
+                curBB.add(new Instruction("sw", "a0", dest.toString()));
         }
     }
 
@@ -402,7 +402,7 @@ public class ASMBuilder implements IRVisitor {
             var ptrReg = load(it.ptr, regSet.t0);
             var indexReg = load(it.index.get(0), regSet.ra);
             if (!it.ty.isBool()) {
-                curBB.add(new Instruction("slli ra, " + indexReg + ", 2"));
+                curBB.add(new Instruction("slli", "ra", indexReg.toString(), "2"));
                 indexReg = regSet.ra;
             }
             addBinaryInst(regMap.get(it.res), "add", ptrReg.toString(), indexReg.toString());
@@ -456,26 +456,26 @@ public class ASMBuilder implements IRVisitor {
         // global
         if (it.ptr.name.charAt(0) == '@') {
             if (dest instanceof Register) {
-                if (it.ty.isBool()) curBB.add(new Instruction("lb " + dest + ", " + it.ptr.name.substring(1)));
-                else    curBB.add(new Instruction("lw " + dest + ", " + it.ptr.name.substring(1)));
+                if (it.ty.isBool()) curBB.add(new Instruction("lb", dest.toString(), it.ptr.name.substring(1)));
+                else    curBB.add(new Instruction("lw", dest.toString(), it.ptr.name.substring(1)));
                 return;
             }
             // dest instanceof StackSlot
-            if (it.ty.isBool()) curBB.add(new Instruction("lb t0, " + it.ptr.name.substring(1)));
-            else    curBB.add(new Instruction("lw t0, " + it.ptr.name.substring(1)));
-            curBB.add(new Instruction("sw t0, " + dest));
+            if (it.ty.isBool()) curBB.add(new Instruction("lb", "t0", it.ptr.name.substring(1)));
+            else    curBB.add(new Instruction("lw", "t0", it.ptr.name.substring(1)));
+            curBB.add(new Instruction("sw", "t0", dest.toString()));
             return;
         }
         // ptr
         var ptrReg = load(it.ptr, regSet.t0);
         if (dest instanceof Register) {
-            if (it.ty.isBool()) curBB.add(new Instruction("lb " + dest + ", " + "0(" + ptrReg + ")"));
-            else    curBB.add(new Instruction("lw " + dest + ", " + "0(" + ptrReg + ")"));
+            if (it.ty.isBool()) curBB.add(new Instruction("lb", dest.toString(), "0(" + ptrReg + ")"));
+            else    curBB.add(new Instruction("lw", dest.toString(), "0(" + ptrReg + ")"));
             return;
         }
-        if (it.ty.isBool()) curBB.add(new Instruction("lb t0, " + "0(" + ptrReg + ")"));
-        else    curBB.add(new Instruction("lw t0, " + "0(" + ptrReg + ")"));
-        curBB.add(new Instruction("sw t0, " + dest));
+        if (it.ty.isBool()) curBB.add(new Instruction("lb", "t0", "0(" + ptrReg + ")"));
+        else    curBB.add(new Instruction("lw", "t0", "0(" + ptrReg + ")"));
+        curBB.add(new Instruction("sw", "t0", dest.toString()));
         return;
     }
 
@@ -496,8 +496,8 @@ public class ASMBuilder implements IRVisitor {
             moveReg(regSet.a0, resReg);
         }
         loadSaveReg();
-        curBB.add(new Instruction("lw ra, " + raSlot));
-        curBB.add(new Instruction("addi sp, sp, " + frameSize));
+        curBB.add(new Instruction("lw", "ra", raSlot.toString()));
+        curBB.add(new Instruction("addi", "sp", "sp", ""+frameSize));
         curBB.exit(new Instruction("ret"));
     }
 
@@ -507,17 +507,17 @@ public class ASMBuilder implements IRVisitor {
         // global
         if (it.ptr.name.charAt(0) == '@') {
             if (it.value.ty.isBool())
-                curBB.add(new Instruction("sb " + value + ", " + it.ptr.name.substring(1) + ", ra"));
+                curBB.add(new Instruction("sb", value.toString(), it.ptr.name.substring(1), "ra"));
             else 
-                curBB.add(new Instruction("sw " + value + ", " + it.ptr.name.substring(1) + ", ra"));
+                curBB.add(new Instruction("sw", value.toString(), it.ptr.name.substring(1), "ra"));
             return;
         }
         var ptr = load(it.ptr, regSet.ra);
         // ptr
         if (it.value.ty.isBool())
-            curBB.add(new Instruction("sb " + value + ", " + "0(" + ptr + ")"));
+            curBB.add(new Instruction("sb", value.toString(), "0(" + ptr + ")"));
         else 
-            curBB.add(new Instruction("sw " + value + ", " + "0(" + ptr + ")"));
+            curBB.add(new Instruction("sw", value.toString(), "0(" + ptr + ")"));
         return;
     }
 
@@ -541,7 +541,7 @@ public class ASMBuilder implements IRVisitor {
             return;
         }
         var src = load(it.src, regSet.t0);
-        curBB.add(new Instruction("sw " + src + ", " + dest));
+        curBB.add(new Instruction("sw", src.toString(), dest.toString()));
     }
     
 }
