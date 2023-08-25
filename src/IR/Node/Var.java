@@ -18,12 +18,6 @@ public class Var extends Register {
         public int cnt = 0;
         public Type ty; // type of the (derefered) local variable
     }
-    public static class LiveInterval {
-        public Var var = null;
-        public int begin = -1;
-        public int end = -1;
-        public boolean acrossFunc = false;
-    }
     public VarInfo info = null;
     public String toString() {
         return ty.toString() + " " + name;

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Stack;
 
 import ASM.Storage.StoreUnit;
 import IR.Type.Type;
@@ -13,7 +14,6 @@ public class FuncDef extends IRNode {
     public String name;
     public ArrayList<Var> args = new ArrayList<Var>();
     public HashSet<Var> locals = new HashSet<>();
-    public HashSet<Var> unnames = new HashSet<>();
     public ArrayList<BasicBlock> blocks = new ArrayList<>();
     public ArrayList<BasicBlock> RPO = null; // Reverse Post Order
     private int regCnt = 0;
@@ -45,7 +45,6 @@ public class FuncDef extends IRNode {
     public Var addUnname(Type t) {
         Var ret = new Var(t, "%_" + regCnt);
         regCnt++;
-        unnames.add(ret);
         return ret;
     }
 
@@ -80,16 +79,35 @@ public class FuncDef extends IRNode {
         }
     }
 
-    public void dfsPostOrder(BasicBlock x) {
-        x.visited = true;
-        for (var i : x.succ)
-            if (!i.visited)
-                dfsPostOrder(i);
-        RPO.add(x);
+    // use heap memory to avoid stack overflow
+    public void dfsPostOrder(BasicBlock start) {
+        Stack<BasicBlock> bbStack = new Stack<>();
+        Stack<Integer> indexStack = new Stack<>();
+        start.visited = true;
+        bbStack.push(start);
+        indexStack.push(0);
+        while (!bbStack.empty()) {
+            int id = indexStack.pop();
+            var bb = bbStack.peek();
+            while (id < bb.succ.size() && bb.succ.get(id).visited) id++;
+            if (id == bb.succ.size()) {
+                bbStack.pop();
+                RPO.add(bb);
+                continue;
+            }
+            indexStack.push(id+1);
+            var son = bb.succ.get(id);
+            son.visited = true;
+            bbStack.push(son);
+            indexStack.push(0);
+        }
     }
 
-    // A Simple, Fast Dominance Algorithm
-    // by Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy
+    /*  Reference:
+     *  A Simple, Fast Dominance Algorithm
+     *  Keith D. Cooper, Timothy J. Harvey and Ken Kennedy
+     *  https://web.cse.ohio-state.edu/~rountev.1/788/papers/cooper-spe01.pdf
+     */
     public void calcDomTree() {
         BasicBlock startBB = blocks.get(0);
         startBB.idom = startBB;

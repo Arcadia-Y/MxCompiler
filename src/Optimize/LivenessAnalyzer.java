@@ -7,6 +7,7 @@ import IR.Node.BasicBlock;
 import IR.Node.FuncDef;
 import IR.Node.Var;
 
+// engineering-a-compiler figure 8.14
 public class LivenessAnalyzer {
 
     public void run(Module mod) {

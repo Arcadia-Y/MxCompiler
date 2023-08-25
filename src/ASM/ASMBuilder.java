@@ -18,15 +18,12 @@ public class ASMBuilder implements IRVisitor {
 
     HashMap<BasicBlock, Block> bb2bb;
     HashMap<Var, StoreUnit> regMap;
-    HashMap<Var, Integer> allocMap;
     int frameSize;
-    int raOffset, s1Offset;
-    boolean methodFlag = false;
 
     HashMap<Register, StackSlot> saveMap = new HashMap<>();
     HashMap<Integer, StackSlot> argumentMap = new HashMap<>();
     StackSlot raSlot;
-    public RegisterSet regSet;
+    RegisterSet regSet;
     
     public ASMBuilder(RegisterSet registerSet) {
         regSet = registerSet;
@@ -64,7 +61,7 @@ public class ASMBuilder implements IRVisitor {
     }
 
     // if reg locates in register, return the register
-    // else load the reg into dest, retiurn dest
+    // else load the reg into dest, return dest
     // only used for NON-STORE instruction
     private Register load(IR.Node.Register reg, Register dest) {
         if (reg instanceof IntConst) {
@@ -453,28 +450,29 @@ public class ASMBuilder implements IRVisitor {
     @Override
     public void visit(Load it) {
         var dest = regMap.get(it.res);
+        String size = "";
+        if (it.ty.isBool())
+            size = "b";
+        else
+            size = "w";
         // global
         if (it.ptr.name.charAt(0) == '@') {
             if (dest instanceof Register) {
-                if (it.ty.isBool()) curBB.add(new Instruction("lb", dest.toString(), it.ptr.name.substring(1)));
-                else    curBB.add(new Instruction("lw", dest.toString(), it.ptr.name.substring(1)));
+                    curBB.add(new Instruction("l"+size, dest.toString(), it.ptr.name.substring(1)));
                 return;
             }
-            // dest instanceof StackSlot
-            if (it.ty.isBool()) curBB.add(new Instruction("lb", "t0", it.ptr.name.substring(1)));
-            else    curBB.add(new Instruction("lw", "t0", it.ptr.name.substring(1)));
+            // dest instanceof StackSlot   
+            curBB.add(new Instruction("l"+size, "t0", it.ptr.name.substring(1)));
             curBB.add(new Instruction("sw", "t0", dest.toString()));
             return;
         }
         // ptr
         var ptrReg = load(it.ptr, regSet.t0);
-        if (dest instanceof Register) {
-            if (it.ty.isBool()) curBB.add(new Instruction("lb", dest.toString(), "0(" + ptrReg + ")"));
-            else    curBB.add(new Instruction("lw", dest.toString(), "0(" + ptrReg + ")"));
+        if (dest instanceof Register) {    
+            curBB.add(new Instruction("l"+size, dest.toString(), "0(" + ptrReg + ")"));
             return;
-        }
-        if (it.ty.isBool()) curBB.add(new Instruction("lb", "t0", "0(" + ptrReg + ")"));
-        else    curBB.add(new Instruction("lw", "t0", "0(" + ptrReg + ")"));
+        }  
+        curBB.add(new Instruction("l"+size, "t0", "0(" + ptrReg + ")"));
         curBB.add(new Instruction("sw", "t0", dest.toString()));
         return;
     }

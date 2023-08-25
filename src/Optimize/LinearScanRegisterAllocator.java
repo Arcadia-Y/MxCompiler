@@ -15,7 +15,11 @@ import IR.Node.FuncDef;
 import IR.Node.Module;
 import IR.Node.Var;
 
-// linear scan register allocation
+/*  Reference:
+ *  Linear Scan Register Allocation
+ *  MASSIMILIANO POLETTO and VIVEK SARKAR
+ *  http://web.cs.ucla.edu/~palsberg/course/cs132/linearscan.pdf
+ */
 public class LinearScanRegisterAllocator implements RegisterAllocator {
     public RegisterSet regSet = new RegisterSet();
     private static class LiveInterval {

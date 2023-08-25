@@ -40,6 +40,7 @@ public class SSAOptimizer {
         }
     }
 
+    // engineering-a-compiler figure 9.9(a)
     private void findGlobals(FuncDef func) {
         var startBB = func.blocks.get(0);
         for (var arg : func.args)
@@ -90,7 +91,7 @@ public class SSAOptimizer {
         }
     }
 
-
+    // engineering-a-compiler figure 9.9(b)
     private void insertPhi(FuncDef func) {
         Queue<BasicBlock> worklist = new LinkedList<>();
         HashSet<BasicBlock> visit = new HashSet<>();
@@ -111,6 +112,7 @@ public class SSAOptimizer {
         }
     }
 
+    // engineering-a-compiler figure 9.12
     private void rename(BasicBlock b, FuncDef func) {
         // traverse phi
         for (var phi : b.phiMap.values()) {
