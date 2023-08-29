@@ -30,13 +30,8 @@ public class SSAOptimizer {
     public void destroySSA(Module m) {
         for (var f : m.funcDefs) {
             removePhi(f);
+            transformParaCopy(f);
             f.calcRPO();
-        }
-    }
-
-    public void optimize(Module m) {
-        for (var f : m.funcDefs) {
-            deadCodeElimination(f);
         }
     }
 
@@ -234,114 +229,54 @@ public class SSAOptimizer {
                     if (alterMap.containsKey(p.BB))
                         p.BB = alterMap.get(p.BB);
                     if (dest != p.reg)
-                        p.BB.add(new Move(dest, p.reg));
+                        p.BB.paraCopy.add(new Move(dest, p.reg));
                 }
             }
             b.phiMap.clear();
         }
-    }  
-
-    // structure used by naive dead code elimination
-    private static class DCEInfo {
-        public Instruction defby;
-        public HashSet<Instruction> useby = new HashSet<>();
-        public boolean useful = false;
     }
-    private HashMap<Var, DCEInfo> DCEMap = new HashMap<>();
-
-    private DCEInfo getDCEInfo(Var v) {
-        if (DCEMap.containsKey(v))
-            return DCEMap.get(v);
-        var ret = new DCEInfo();
-        DCEMap.put(v, ret);
-        return ret;
-    }
-    private boolean isUseful(Instruction i) {
-        if (i instanceof Store || i instanceof Call)
-            return true;
-        return false;
-    }
-    private void collectDCEInfo(FuncDef func) {
-        DCEMap.clear();
+    
+    // The-SSA-Book Algorithm 3.6
+    private void transformParaCopy(FuncDef func) {
+        HashMap<Var, Register> preMap = new HashMap<>();
         for (var b : func.blocks) {
-            // phi ins
-            for (var phi : b.phiMap.values()) {
-                var resInfo = getDCEInfo(phi.res);
-                resInfo.defby = phi;
-                var uses = phi.getUse();
-                for (var u : uses)
-                    getDCEInfo(u).useby.add(phi);
-            }
-            // ordinary ins
-            for (var i : b.ins) {
-                var def = i.getDef();
-                var uses =i.getUse();
-                boolean useful = isUseful(i);
-                if (def != null)
-                    getDCEInfo(def).defby = i;
-                if (uses != null)
-                    for (var u : uses) {
-                        var info = getDCEInfo(u);
-                        info.useby.add(i);
-                        if (useful) info.useful = true;
-                    }
-            }
-            // exit ins
-            var uses = b.exitins.getUse();
-            if (uses != null)
-                for (var u : uses) {
-                    var info = getDCEInfo(u);
-                    info.useby.add(b.exitins);
-                    info.useful = true;
-                }
-        }
-    }
-
-    private void deadCodeElimination(FuncDef func) {
-        collectDCEInfo(func);
-        HashSet<Var> worklist = new HashSet<>();
-        HashSet<Instruction> toremove = new HashSet<>();
-        // mark useful
-        for (var item : DCEMap.entrySet())
-            if (item.getValue().useful)
-                worklist.add(item.getKey());
-        while (!worklist.isEmpty()) {
-            var it = worklist.iterator();
-            var reg = it.next();
-            it.remove();
-            var info = DCEMap.get(reg);
-            if (info.defby != null) {
-                var uses = info.defby.getUse();
-                if (uses != null)
-                    for (var u : uses) {
-                        var useInfo = DCEMap.get(u);
-                        if (!useInfo.useful) {
-                            useInfo.useful = true;
-                            worklist.add(u);
-                        }
-                    }
-            }
-        }
-        // find dead code
-        for (var item : DCEMap.values())
-            if (!item.useful) {
-                if (item.defby != null && !(item.defby instanceof Call))
-                    toremove.add(item.defby);
-                toremove.addAll(item.useby);
-            }
-        // remove deadcode
-        for (var b : func.blocks) {
-            var phiIt = b.phiMap.entrySet().iterator();
-            while (phiIt.hasNext()) {
-                var p = phiIt.next();
-                if (toremove.contains(p.getValue()))
-                    phiIt.remove();
-            }
-            var it = b.ins.iterator();
+            preMap.clear();
+            // collect preInfo
+            var it = b.paraCopy.iterator();
             while (it.hasNext()) {
                 var i = it.next();
-                if (toremove.contains(i))
+                if (i.src == i.dest)
                     it.remove();
+                else 
+                    preMap.put(i.dest, i.src);
+            }
+            // sequentialize
+            while (true) {
+                boolean flag = true;
+                while (flag) {
+                    flag = false;
+                    it = b.paraCopy.iterator();
+                    while (it.hasNext()) {
+                        var i = it.next();
+                        if (!preMap.containsValue(i.dest)) {
+                            flag = true;
+                            b.add(i);
+                            it.remove();
+                            preMap.remove(i.dest);
+                            continue;
+                        }
+                    }
+                }
+                it = b.paraCopy.iterator();
+                if (!it.hasNext()) break;
+                // break one of the cycles
+                var i = it.next();
+                var tmpVar = func.newUnname(i.dest.ty);
+                var newMove = new Move(tmpVar, i.src);
+                b.add(newMove);
+                it.remove();
+                b.paraCopy.add(newMove);
+                preMap.put(i.dest, tmpVar);
             }
         }
     }

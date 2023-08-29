@@ -66,7 +66,7 @@ public class Compiler {
 
         SSAOptimizer ssa = new SSAOptimizer();
         ssa.constructSSA(mod);
-        ssa.optimize(mod);
+        new DeadCodeElimination().run(mod);
         ssa.destroySSA(mod);
         new LivenessAnalyzer().run(mod);
         LinearScanRegisterAllocator regAlloc = new LinearScanRegisterAllocator();

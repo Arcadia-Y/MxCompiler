@@ -26,6 +26,7 @@ public class BasicBlock extends IRNode {
     public BasicBlock idom;
     public HashSet<BasicBlock> DF = new HashSet<>(); // Dominance Frontier
     public HashSet<BasicBlock> DTSon = new HashSet<>();
+    public LinkedList<Move> paraCopy = new LinkedList<>();
 
     public BasicBlock(String n) {
         label = n;
