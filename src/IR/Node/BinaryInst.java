@@ -5,6 +5,8 @@ import java.util.List;
 
 import IR.IRVisitor;
 import IR.Type.Type;
+import Optimize.ConstantPropagation.CPInfo;
+import Optimize.ConstantPropagation.Metainfo;
 
 public class BinaryInst extends Instruction {
     public Var res;
@@ -49,5 +51,48 @@ public class BinaryInst extends Instruction {
             op1 = r;
         else if (op2 == v)
             op2 = r; 
+    }
+    
+    public CPInfo interpret() {
+        if (op1 instanceof Var || op2 instanceof Var)
+            return new CPInfo(Metainfo.UNDEF);
+        int v1 = ((IntConst)op1).value;
+        int v2 = ((IntConst)op2).value;
+        int res = 0;
+        switch (op) {
+        case "add":
+            res = v1 + v2;
+            break;
+        case "sub":
+            res = v1 - v2;
+            break;
+        case "mul":
+            res = v1 * v2;
+            break;
+        case "sdiv":
+            if (v2 == 0) return new CPInfo(Metainfo.UNDEF);
+            res = v1 / v2;
+            break;
+        case "srem":
+            if (v2 == 0) return new CPInfo(Metainfo.UNDEF);
+            res = v1 % v2;
+            break;
+        case "shl":
+            res = v1 << v2;
+            break;
+        case "ashr":
+            res = v1 >> v2;
+            break;
+        case "and":
+            res = v1 & v2;
+            break;
+        case "or":
+            res = v1 | v2;
+            break;
+        case "xor":
+            res = v1 ^ v2;
+            break;
+        }
+        return new CPInfo(res);
     }
 }

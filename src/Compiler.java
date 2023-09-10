@@ -66,6 +66,7 @@ public class Compiler {
 
         SSAOptimizer ssa = new SSAOptimizer();
         ssa.constructSSA(mod);
+        new ConstantPropagation().run(mod);
         new DeadCodeElimination().run(mod);
         ssa.destroySSA(mod);
         new LivenessAnalyzer().run(mod);

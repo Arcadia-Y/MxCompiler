@@ -5,6 +5,8 @@ import java.util.List;
 
 import IR.IRVisitor;
 import IR.Type.Type;
+import Optimize.ConstantPropagation.CPInfo;
+import Optimize.ConstantPropagation.Metainfo;
 
 public class Icmp extends Instruction {
     public Var res;
@@ -49,5 +51,33 @@ public class Icmp extends Instruction {
             op1 = r;
         else if (op2 == v)
             op2 = r;
+    }
+    public CPInfo interpret() {
+        if (op1 instanceof Var || op2 instanceof Var)
+            return new CPInfo(Metainfo.UNDEF);
+        int v1 = ((IntConst)op1).value;
+        int v2 = ((IntConst)op2).value;
+        boolean res = false;
+        switch(cond) {
+        case "eq":
+            res = v1 == v2;
+            break;
+        case "ne":
+            res = v1 != v2;
+            break;
+        case "slt":
+            res = v1 < v2;
+            break;
+        case "sgt":
+            res = v1 > v2;
+            break;
+        case "sle":
+            res = v1 <= v2;
+            break;
+        case "sge":
+            res = v1 >= v2;
+            break;
+        }
+        return new CPInfo(res);
     }
 }

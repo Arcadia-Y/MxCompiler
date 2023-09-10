@@ -8,5 +8,6 @@ public abstract class Instruction extends IRNode {
     public abstract void accept(IRVisitor v);
     public abstract Var getDef();
     public abstract List<Var> getUse();
+    // repalce v with r
     public abstract void replace(Var v, Register r);
 }
