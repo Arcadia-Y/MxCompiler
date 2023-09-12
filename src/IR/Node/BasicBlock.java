@@ -45,6 +45,16 @@ public class BasicBlock extends IRNode {
         phiMap.put(res, p);
         return p;
     }
+    public void removeExit() {
+        if (exitins instanceof Ret) return;
+        Br br = (Br) exitins;
+        succ.remove(br.trueBB);
+        br.trueBB.pre.remove(this);
+        if (br.cond != null) {
+            succ.remove(br.falseBB);
+            br.falseBB.pre.remove(this);
+        }
+    }
     public void exit(Br br) {
         exitins = br;
         succ.add(br.trueBB);
@@ -57,6 +67,33 @@ public class BasicBlock extends IRNode {
     public void exit(Ret ret) {
         exitins = ret;
     }
+
+    public void adjustPhiBB(BasicBlock originBB, BasicBlock newBB) {
+        for (var phi : phiMap.values())
+            for (var pair : phi.list)
+                if (pair.BB == originBB)
+                    pair.BB = newBB;                    
+    }
+    public void removePhiBB(BasicBlock target) {
+        for (var phi : phiMap.values()) {
+            var it = phi.list.iterator();
+            while (it.hasNext()) {
+                var pair = it.next();
+                if (pair.BB == target) {
+                    it.remove();
+                    break;
+                }
+            }
+        }
+        if (pre.size() == 1) {
+            var preBB = pre.get(0);
+            for (var phi : phiMap.values()) {
+                var item = phi.list.get(0);
+                preBB.add(new Move(phi.res, item.reg));
+            }
+        }
+    }
+
     public String toString() {
         String ret = label + ":\n";
         for (var i : phiMap.values()) {

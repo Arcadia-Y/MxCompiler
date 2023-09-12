@@ -66,8 +66,15 @@ public class Compiler {
 
         SSAOptimizer ssa = new SSAOptimizer();
         ssa.constructSSA(mod);
-        new ConstantPropagation().run(mod);
-        new DeadCodeElimination().run(mod);
+        var cp = new ConstantPropagation();
+        var dce = new DeadCodeElimination();
+        cp.run(mod);
+        dce.run(mod);
+        cp.run(mod);
+        dce.run(mod);
+        cp.run(mod);
+        dce.run(mod);
+        dce.eliminateUnreachable(mod);
         ssa.destroySSA(mod);
         new LivenessAnalyzer().run(mod);
         LinearScanRegisterAllocator regAlloc = new LinearScanRegisterAllocator();

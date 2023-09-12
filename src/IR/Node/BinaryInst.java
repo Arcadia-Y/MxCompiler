@@ -5,10 +5,11 @@ import java.util.List;
 
 import IR.IRVisitor;
 import IR.Type.Type;
+import Optimize.Interpretable;
 import Optimize.ConstantPropagation.CPInfo;
 import Optimize.ConstantPropagation.Metainfo;
 
-public class BinaryInst extends Instruction {
+public class BinaryInst extends Instruction implements Interpretable {
     public Var res;
     public String op;
     public Type ty;
@@ -53,6 +54,10 @@ public class BinaryInst extends Instruction {
             op2 = r; 
     }
     
+    public Var getRes() {
+        return res;
+    }
+
     public CPInfo interpret() {
         if (op1 instanceof Var || op2 instanceof Var)
             return new CPInfo(Metainfo.UNDEF);

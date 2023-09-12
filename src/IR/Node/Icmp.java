@@ -5,10 +5,11 @@ import java.util.List;
 
 import IR.IRVisitor;
 import IR.Type.Type;
+import Optimize.Interpretable;
 import Optimize.ConstantPropagation.CPInfo;
 import Optimize.ConstantPropagation.Metainfo;
 
-public class Icmp extends Instruction {
+public class Icmp extends Instruction implements Interpretable {
     public Var res;
     public String cond;
     public Type ty;
@@ -51,6 +52,9 @@ public class Icmp extends Instruction {
             op1 = r;
         else if (op2 == v)
             op2 = r;
+    }
+    public Var getRes() {
+        return res;
     }
     public CPInfo interpret() {
         if (op1 instanceof Var || op2 instanceof Var)

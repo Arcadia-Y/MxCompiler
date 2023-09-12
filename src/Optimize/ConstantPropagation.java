@@ -6,10 +6,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 
 import IR.Node.BasicBlock;
-import IR.Node.BinaryInst;
 import IR.Node.BoolConst;
 import IR.Node.FuncDef;
-import IR.Node.Icmp;
 import IR.Node.Instruction;
 import IR.Node.IntConst;
 import IR.Node.Module;
@@ -97,17 +95,8 @@ public class ConstantPropagation {
                 if (m == null) continue;
                 var mValue = getCPInfo(m);
                 if (mValue.metainfo == Metainfo.PHI) continue;
-                if (op instanceof BinaryInst) {
-                    var bin = (BinaryInst) op;
-                    var newValue = bin.interpret();
-                    if (newValue.metainfo != Metainfo.UNDEF) {
-                        ssaMap.put(m, newValue);
-                        worklist.add(m);
-                        toremove.add(op);
-                    }
-                } else if (op instanceof Icmp) {
-                    var icmp = (Icmp) op;
-                    var newValue = icmp.interpret();
+                if (op instanceof Interpretable) {
+                    var newValue = ((Interpretable)op).interpret();
                     if (newValue.metainfo != Metainfo.UNDEF) {
                         ssaMap.put(m, newValue);
                         worklist.add(m);
@@ -145,19 +134,12 @@ public class ConstantPropagation {
             if (uses != null)
                 for (var u : uses)
                     getUseInfo(u).add(i);
-            if (i instanceof BinaryInst) {
-                var bin = (BinaryInst) i;
-                var res = bin.interpret();
+            if (i instanceof Interpretable) {
+                var ins = (Interpretable) i;
+                var res = ins.interpret();
                 if (res.metainfo == Metainfo.UNDEF) continue;
-                ssaMap.put(bin.res, res);
-                worklist.add(bin.res);
-                toremove.add(i);
-            } else if (i instanceof Icmp) {
-                var icmp = (Icmp) i;
-                var res = icmp.interpret();
-                if (res.metainfo == Metainfo.UNDEF) continue;
-                ssaMap.put(icmp.res, icmp.interpret());
-                worklist.add(icmp.res);
+                ssaMap.put(ins.getRes(), res);
+                worklist.add(ins.getRes());
                 toremove.add(i);
             }
         }

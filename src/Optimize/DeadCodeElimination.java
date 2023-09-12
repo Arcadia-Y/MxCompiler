@@ -15,8 +15,10 @@ public class DeadCodeElimination {
     private HashMap<Var, DCEInfo> DCEMap = new HashMap<>();
 
     public void run(Module mod) {
-        for (var f : mod.funcDefs)
-            deadCodeElimination(f); 
+        for (var f : mod.funcDefs) {
+            codeElimination(f);
+            jumpElimination(f);
+        }
     }
 
     private DCEInfo getDCEInfo(Var v) {
@@ -67,7 +69,7 @@ public class DeadCodeElimination {
         }
     }
 
-    private void deadCodeElimination(FuncDef func) {
+    private void codeElimination(FuncDef func) {
         collectDCEInfo(func);
         HashSet<Var> worklist = new HashSet<>();
         HashSet<Instruction> toremove = new HashSet<>();
@@ -115,4 +117,90 @@ public class DeadCodeElimination {
             }
         }
     }
+
+    // engineering-a-compiler figure 10.2
+    private void jumpElimination(FuncDef func) {
+        boolean changed = true;
+        while (changed) {
+            func.calcRPO();
+            changed = onePass(func);
+        }
+    }
+
+    private boolean onePass(FuncDef func) {
+        boolean changed = false;
+        HashSet<BasicBlock> removeBB = new HashSet<>();
+        for (var index = func.RPO.size()-1; index >= 0; index--) {
+            var i = func.RPO.get(index);
+            var exitins = i.exitins;
+            if (exitins instanceof Ret) continue;
+            var exit = (Br) exitins;
+
+            if (exit.cond != null) {
+                if (exit.trueBB == exit.falseBB) { // branch folding
+                    changed = true;
+                    i.removeExit();
+                    exit.trueBB.removePhiBB(i);
+                    i.exit(new Br(exit.trueBB));
+                } else if (exit.cond instanceof BoolConst) { // definitive branch
+                    changed = true;
+                    var boolCond = (BoolConst) exit.cond;
+                    i.removeExit();
+                    if (boolCond.value) {
+                        i.exit(new Br(exit.trueBB));
+                        exit.falseBB.removePhiBB(i);
+                    } else {
+                        i.exit(new Br(exit.falseBB));
+                        exit.trueBB.removePhiBB(i); 
+                    }
+                }
+            }
+
+            if (exit.cond == null) {
+                var destBB = exit.trueBB;
+                if (destBB.pre.size() == 1) { // combine blocks
+                    changed = true;
+                    i.ins.addAll(destBB.ins);
+                    destBB.ins.clear();
+                    var newexit = destBB.exitins;
+                    destBB.removeExit();
+                    i.removeExit();
+                    if (newexit instanceof Br) {
+                        var br = (Br) newexit;
+                        i.exit(br);
+                        br.trueBB.adjustPhiBB(destBB, i);
+                        if (br.falseBB != null)
+                            br.falseBB.adjustPhiBB(destBB, i);
+                    } else {
+                        var ret = (Ret) newexit;
+                        i.exit(ret);
+                    }
+                    removeBB.add(destBB);
+                }
+            }
+        }
+
+        if (!removeBB.isEmpty()) {
+            var it = func.blocks.iterator();
+            while (it.hasNext()) {
+                var bb = it.next();
+                if (removeBB.contains(bb))
+                    it.remove();
+            }
+        }
+        return changed;
+    }
+
+    public void eliminateUnreachable(Module mod) {
+        for (var func : mod.funcDefs) {
+            var it = func.blocks.iterator();
+            it.next();
+            while (it.hasNext()) {
+                var b = it.next();
+                if (b.pre.isEmpty())
+                    it.remove();
+            }
+        }
+    }
+
 }

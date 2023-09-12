@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Stack;
 
 import ASM.Storage.StoreUnit;
@@ -14,7 +15,7 @@ public class FuncDef extends IRNode {
     public String name;
     public ArrayList<Var> args = new ArrayList<Var>();
     public HashSet<Var> locals = new HashSet<>();
-    public ArrayList<BasicBlock> blocks = new ArrayList<>();
+    public LinkedList<BasicBlock> blocks = new LinkedList<>();
     public ArrayList<BasicBlock> RPO = null; // Reverse Post Order
     private int regCnt = 0;
     private int BBCnt = 0;
