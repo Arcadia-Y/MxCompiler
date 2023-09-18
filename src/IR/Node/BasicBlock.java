@@ -86,11 +86,11 @@ public class BasicBlock extends IRNode {
             }
         }
         if (pre.size() == 1) {
-            var preBB = pre.get(0);
             for (var phi : phiMap.values()) {
                 var item = phi.list.get(0);
-                preBB.add(new Move(phi.res, item.reg));
+                ins.addFirst(new Move(phi.res, item.reg));
             }
+            phiMap.clear();
         }
     }
 

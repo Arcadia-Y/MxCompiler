@@ -53,9 +53,11 @@ public class Icmp extends Instruction implements Interpretable {
         else if (op2 == v)
             op2 = r;
     }
+    @Override
     public Var getRes() {
         return res;
     }
+    @Override
     public CPInfo interpret() {
         if (op1 instanceof Var || op2 instanceof Var)
             return new CPInfo(Metainfo.UNDEF);

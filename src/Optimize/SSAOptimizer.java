@@ -161,6 +161,10 @@ public class SSAOptimizer {
                         p.getValue().add(resolveUse(local2reg.get(top)), b);
                     else
                         p.getValue().add(Register.defaultValue(old.info.ty), b);
+                } else {
+                    for (var pair : p.getValue().list)
+                        if (pair.BB == b)
+                            pair.reg = resolveUse(pair.reg);
                 }
             }
         // rename DTSon
@@ -271,7 +275,7 @@ public class SSAOptimizer {
                 if (!it.hasNext()) break;
                 // break one of the cycles
                 var i = it.next();
-                var tmpVar = func.newUnname(i.dest.ty);
+                var tmpVar = func.addUnname(i.dest.ty);
                 var newMove = new Move(tmpVar, i.src);
                 b.add(newMove);
                 it.remove();

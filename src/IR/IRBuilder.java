@@ -181,7 +181,7 @@ public class IRBuilder implements ASTVisitor {
         
         for (var i : it.para) {
             Type ty = transType(i.t.t);
-            Var arg = curFunc.newUnname(ty);
+            Var arg = curFunc.addUnname(ty);
             curFunc.args.add(arg);
             Var v = new Var(ptrType, "%" + i.name);
             curFunc.locals.add(v);
@@ -216,7 +216,7 @@ public class IRBuilder implements ASTVisitor {
                 item.accept(this);
         if (!constructFlag) {
             FuncDef construct = new FuncDef(voidType, curClass + "." + curClass);
-            construct.args.add(construct.newUnname(ptrType));
+            construct.args.add(construct.addUnname(ptrType));
             BasicBlock tmpBB = construct.addBB();
             tmpBB.exit(new Ret(null));
             mod.funcDefs.add(construct);
@@ -318,9 +318,10 @@ public class IRBuilder implements ASTVisitor {
 
     @Override
     public void visit(ForStmt it) {
-        if (it.init != null) {
+        if (it.init != null)
             it.init.accept(this);
-        }
+        else if (it.varDecl != null)
+            it.varDecl.accept(this);
         BasicBlock condBB = curFunc.addBB();
         BasicBlock loopBB = curFunc.addBB();
         BasicBlock stepBB = curFunc.addBB();
@@ -692,7 +693,7 @@ public class IRBuilder implements ASTVisitor {
         Type ty = transType(it.t);
         boolean nonvoid = it.t.baseType != BaseType.VOID;
         if (nonvoid) {
-            resPtr = curFunc.newUnname(ty);
+            resPtr = curFunc.addUnname(ptrType);
             curBB.add(new Alloca(resPtr, ty));
             curFunc.locals.add(resPtr);
         }
@@ -714,7 +715,7 @@ public class IRBuilder implements ASTVisitor {
         if (nonvoid) {
             trueBB.add(new Store(trueReg, resPtr));
             falseBB.add(new Store(falseReg, resPtr));
-            Var res = curFunc.newUnname(ty);
+            Var res = curFunc.addUnname(ty);
             endBB.add(new Load(res, ty, resPtr));
             resReg = res;
         }

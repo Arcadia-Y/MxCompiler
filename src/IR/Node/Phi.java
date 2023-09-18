@@ -9,7 +9,7 @@ import IR.Type.Type;
 public class Phi extends Instruction {
     public Var res;
     public Type ty;
-    public class Pair {
+    public static class Pair {
         public Register reg;
         public BasicBlock BB;
         public Pair(Register r, BasicBlock b) {

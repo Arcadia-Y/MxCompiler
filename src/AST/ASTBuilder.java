@@ -46,7 +46,7 @@ public class ASTBuilder extends MxBaseVisitor<ASTNode> {
     }
     public ASTNode visitFor(MxParser.ForContext ctx) {
         ForStmt ret = new ForStmt(new Position(ctx));
-        if (ctx.init.expr() != null)
+        if (ctx.init != null && ctx.init.expr() != null)
             ret.init = (Expr) visit(ctx.init.expr());
         else if (ctx.declInit != null)
             ret.varDecl = (VarDecl) visit(ctx.declInit);

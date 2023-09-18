@@ -18,6 +18,7 @@ public class DeadCodeElimination {
         for (var f : mod.funcDefs) {
             codeElimination(f);
             jumpElimination(f);
+            eliminateUnreachable(f);
         }
     }
 
@@ -69,7 +70,7 @@ public class DeadCodeElimination {
         }
     }
 
-    private void codeElimination(FuncDef func) {
+    public boolean codeElimination(FuncDef func) {
         collectDCEInfo(func);
         HashSet<Var> worklist = new HashSet<>();
         HashSet<Instruction> toremove = new HashSet<>();
@@ -116,15 +117,19 @@ public class DeadCodeElimination {
                     it.remove();
             }
         }
+        return !toremove.isEmpty();
     }
 
     // engineering-a-compiler figure 10.2
-    private void jumpElimination(FuncDef func) {
+    public boolean jumpElimination(FuncDef func) {
+        boolean ret = false;
         boolean changed = true;
         while (changed) {
             func.calcRPO();
             changed = onePass(func);
+            ret |= changed;
         }
+        return ret;
     }
 
     private boolean onePass(FuncDef func) {
@@ -191,16 +196,22 @@ public class DeadCodeElimination {
         return changed;
     }
 
-    public void eliminateUnreachable(Module mod) {
-        for (var func : mod.funcDefs) {
-            var it = func.blocks.iterator();
-            it.next();
-            while (it.hasNext()) {
-                var b = it.next();
-                if (b.pre.isEmpty())
-                    it.remove();
+    public boolean eliminateUnreachable(FuncDef func) {
+        boolean changed = false;
+        var it = func.blocks.iterator();
+        it.next();
+        while (it.hasNext()) {
+            var b = it.next();
+            if (b.pre.isEmpty()) {
+                changed = true;
+                for (var s : b.succ) {
+                    s.pre.remove(b);
+                    s.removePhiBB(b);
+                }
+                it.remove();
             }
         }
+        return changed;
     }
 
 }

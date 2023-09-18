@@ -28,6 +28,7 @@ public class Alloca extends Instruction {
     }
     @Override
     public void replace(Var v, Register r) {
-        throw new UnsupportedOperationException("Unimplemented method 'replace'");
+        if (res == v)
+            res = (Var)r;
     }
 }

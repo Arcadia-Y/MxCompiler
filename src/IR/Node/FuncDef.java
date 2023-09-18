@@ -25,6 +25,9 @@ public class FuncDef extends IRNode {
     public int frameSize;
     public HashSet<Var> deadArg = new HashSet<>();
 
+    public int insCnt = 0;
+    public int callCnt = 0;
+
     public FuncDef(Type t, String n) {
         ty = t;
         name = n;
@@ -34,12 +37,6 @@ public class FuncDef extends IRNode {
         BasicBlock ret = new BasicBlock("_BB" + BBCnt);
         blocks.add(ret);
         BBCnt++;
-        return ret;
-    }
-
-    public Var newUnname(Type t) {
-        Var ret = new Var(t, "%_" + regCnt);
-        regCnt++;
         return ret;
     }
 
@@ -70,6 +67,8 @@ public class FuncDef extends IRNode {
 
     public void calcRPO() {
         RPO = new ArrayList<>();
+        for (var b : blocks)
+            b.visited = false;
         dfsPostOrder(blocks.get(0));
         Collections.reverse(RPO);
         int i = 0;
@@ -137,8 +136,10 @@ public class FuncDef extends IRNode {
         it.next();
         while (it.hasNext()) {
             var b = it.next();
-            if (b.idom == null)
-                it.remove(); // remove unreachable blocks
+            if (b.idom == null) { // remove unreachable blocks
+                b.removeExit();
+                it.remove();
+            }
             else
                 b.idom.DTSon.add(b);
         }

@@ -64,17 +64,21 @@ public class Compiler {
         IRBuilder irBuilder = new IRBuilder();
         IR.Node.Module mod = irBuilder.getIR(prog);
 
+        new FunctionInliner().run(mod);
         SSAOptimizer ssa = new SSAOptimizer();
         ssa.constructSSA(mod);
         var cp = new ConstantPropagation();
         var dce = new DeadCodeElimination();
-        cp.run(mod);
-        dce.run(mod);
-        cp.run(mod);
-        dce.run(mod);
-        cp.run(mod);
-        dce.run(mod);
-        dce.eliminateUnreachable(mod);
+        for (var f : mod.funcDefs) {
+            boolean changed = true;
+            while (changed) {
+                changed = false;
+                changed |= cp.SimpleConstantPropagation(f);
+                changed |= dce.codeElimination(f);
+                changed |= dce.jumpElimination(f);
+                changed |= dce.eliminateUnreachable(f);
+            }
+        }
         ssa.destroySSA(mod);
         new LivenessAnalyzer().run(mod);
         LinearScanRegisterAllocator regAlloc = new LinearScanRegisterAllocator();

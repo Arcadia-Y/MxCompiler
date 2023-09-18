@@ -61,7 +61,7 @@ public class ConstantPropagation {
     }
 
     // engineering-a-compiler figure 9.18
-    private void SimpleConstantPropagation(FuncDef func) {
+    public boolean SimpleConstantPropagation(FuncDef func) {
         // initialization phase
         worklist.clear();
         toremove.clear();
@@ -77,6 +77,7 @@ public class ConstantPropagation {
                     it.remove();
             }
         }
+        return !toremove.isEmpty();
     }
 
     private void propagate() {

@@ -53,14 +53,20 @@ public class BinaryInst extends Instruction implements Interpretable {
         else if (op2 == v)
             op2 = r; 
     }
-    
+    @Override
     public Var getRes() {
         return res;
     }
-
+    @Override
     public CPInfo interpret() {
         if (op1 instanceof Var || op2 instanceof Var)
             return new CPInfo(Metainfo.UNDEF);
+        if (op1 instanceof BoolConst) { // only for '!'
+            boolean v1 = ((BoolConst)op1).value;
+            boolean v2 = ((BoolConst)op2).value;
+            assert op.equals("xor");
+            return new CPInfo(v1^v2);
+        }
         int v1 = ((IntConst)op1).value;
         int v2 = ((IntConst)op2).value;
         int res = 0;
