@@ -109,6 +109,13 @@ public class FuncDef extends IRNode {
      *  https://web.cse.ohio-state.edu/~rountev.1/788/papers/cooper-spe01.pdf
      */
     public void calcDomTree() {
+        for (var b : blocks) {
+            b.DF.clear();
+            b.DTSon.clear();
+            b.idom = null;
+            b.defs.clear();
+            b.uses.clear();
+        }
         BasicBlock startBB = blocks.get(0);
         startBB.idom = startBB;
         var list = blocks.subList(1, blocks.size());

@@ -14,8 +14,8 @@ public class FunctionInliner {
     private HashMap<Var, Register> argMap = new HashMap<>();
     private HashMap<BasicBlock, BasicBlock> bbMap = new HashMap<>();
     private FuncDef curFunc;
-    private int CALLEELIMIT = 100;
-    private int CALLERLIMIT = 500;
+    private int CALLEELIMIT = 300;
+    private int CALLERLIMIT = 1500;
 
     public void run(Module mod) {
         buildMap(mod);
@@ -39,8 +39,13 @@ public class FunctionInliner {
         return res;
     }
     private Register getNewReg(Register oldReg) {
-        if (oldReg instanceof Var)
-            return getNewVar((Var)oldReg);
+        if (oldReg instanceof Var) {
+            var oldVar = (Var) oldReg;
+            var posArg = argMap.get(oldVar);
+            if (posArg != null)
+                return posArg;
+            return getNewVar(oldVar);
+        }
         return oldReg;
     }
     private BasicBlock getNewBB(BasicBlock oldBB) {
@@ -65,9 +70,6 @@ public class FunctionInliner {
         }
         if (oldIns instanceof Store) {
             var i = (Store)oldIns;
-            var argReg = argMap.get(i.value);
-            if (argReg != null) // function argument
-                return new Store(argReg, getNewVar(i.ptr));
             return new Store(getNewReg(i.value), getNewVar(i.ptr));
         }
         if (oldIns instanceof BinaryInst) {
@@ -101,6 +103,10 @@ public class FunctionInliner {
             for (var arg : i.args)
                 res.args.add(getNewReg(arg));
             return res;
+        }
+        if (oldIns instanceof Move) {
+            var i = (Move)oldIns;
+            return new Move(getNewVar(i.dest), getNewReg(i.src));
         }
         // should never be reached
         return null;
