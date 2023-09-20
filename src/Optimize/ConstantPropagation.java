@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 
 import IR.Node.BasicBlock;
+import IR.Node.BinaryInst;
 import IR.Node.BoolConst;
 import IR.Node.FuncDef;
 import IR.Node.Instruction;
@@ -146,6 +147,56 @@ public class ConstantPropagation {
                 toremove.add(i);
             }
         }
+    }
+
+    private static class AddSubInfo {
+        public Var variable;
+        public int constInt = 0;
+        public AddSubInfo(Var var, int constValue) {
+            variable = var;
+            constInt = constValue;
+        }
+    }
+    private HashMap<Var, AddSubInfo> addSubMap = new HashMap<>();
+    public boolean dealAddSub(FuncDef func) {
+        boolean changed = false;
+        addSubMap.clear();
+        for (var bb : func.blocks)
+            for (var ins : bb.ins)
+                if (ins instanceof BinaryInst) {
+                    var bin = (BinaryInst) ins;
+                    boolean addFlag = bin.op.equals("add");
+                    boolean subFlag = bin.op.equals("sub");
+                    if (!addFlag && !subFlag) continue;
+                    boolean lFlag = bin.op1 instanceof Var;
+                    boolean rFlag = bin.op2 instanceof Var;
+                    if (subFlag && rFlag) continue;
+                    if (!(lFlag^rFlag)) continue;
+                    Var variable = null;
+                    int constValue = 0;
+                    if (lFlag) {
+                        variable = (Var)bin.op1;
+                        constValue = ((IntConst)bin.op2).value;
+                    } else {
+                        variable = (Var)bin.op2;
+                        constValue = ((IntConst)bin.op1).value;
+                    }
+                    if (subFlag) constValue = -constValue;
+                    var newInfo = new AddSubInfo(variable, constValue);
+                    var info = addSubMap.get(variable);
+                    if (info == null) {
+                        addSubMap.put(bin.res, newInfo);
+                        continue;
+                    }
+                    changed = true;
+                    newInfo.variable = info.variable;
+                    newInfo.constInt = info.constInt + constValue;
+                    addSubMap.put(bin.res, newInfo);
+                    bin.op1 = newInfo.variable;
+                    bin.op2 = new IntConst(newInfo.constInt);
+                    bin.op = "add";
+                }
+        return changed;
     }
 
 }

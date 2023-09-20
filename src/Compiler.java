@@ -61,22 +61,25 @@ public class Compiler {
         IRBuilder irBuilder = new IRBuilder();
         IR.Node.Module mod = irBuilder.getIR(prog);
 
-        new FunctionInliner().run(mod);
+        var funcInline = new FunctionInliner();
         SSAOptimizer ssa = new SSAOptimizer();
-        ssa.constructSSA(mod);
-        var cp = new ConstantPropagation();
         var dce = new DeadCodeElimination();
+        var cp = new ConstantPropagation();
+        var globalOpt = new GlobalVariableOptimizer(mod);
+        funcInline.run(mod);
+        ssa.constructSSA(mod);
         for (var f : mod.funcDefs) {
             boolean changed = true;
             while (changed) {
                 changed = false;
                 changed |= cp.SimpleConstantPropagation(f);
+                changed |= cp.dealAddSub(f);
                 changed |= dce.codeElimination(f);
                 changed |= dce.jumpElimination(f);
                 changed |= dce.eliminateUnreachable(f);
+                globalOpt.dealFunc(f);
             }
         }
-        new GlobalVariableOptimizer().run(mod);
 
         ssa.destroySSA(mod);
         new LivenessAnalyzer().run(mod);

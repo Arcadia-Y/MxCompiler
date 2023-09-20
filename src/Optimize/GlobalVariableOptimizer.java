@@ -22,14 +22,20 @@ public class GlobalVariableOptimizer {
         return ret;
     }
 
-    public void run(Module mod) {
+    public GlobalVariableOptimizer(Module mod) {
         for (var f : mod.funcDecls)
             builtinFunc.add(f.name);
-        for (var f : mod.funcDefs) {
-            useMap.clear();
-            for (var b : f.blocks)
-                dealBlock(b);
-        }
+    }
+
+    public void run(Module mod) {
+        for (var f : mod.funcDefs)
+            dealFunc(f);
+    }
+
+    public void dealFunc(FuncDef func) {
+        useMap.clear();
+        for (var b : func.blocks)
+            dealBlock(b);
     }
 
     private void dealBlock(BasicBlock bb) {
