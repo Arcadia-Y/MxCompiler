@@ -433,7 +433,7 @@ public class ASMBuilder implements IRVisitor {
         var op1reg = load(it.op1, regSet.t0);
         var op2reg = load(it.op2, regSet.ra);
         var dest = regMap.get(it.res);
-        if (!insIterator.hasNext() && curIRBB.exitins instanceof Br) {
+        if (!insIterator.hasNext() && curIRBB.exitins instanceof Br && it.res.usedCnt == 1) {
             var brIns = (Br) curIRBB.exitins;
             if (brIns.cond == it.res) {
                 exitVisitFlag = true;

@@ -65,6 +65,8 @@ public class ConstantPropagation {
         // initialization phase
         worklist.clear();
         toremove.clear();
+        ssaMap.clear();
+        useMap.clear();
         collectInfo(func);
         // propagation phase
         propagate();
