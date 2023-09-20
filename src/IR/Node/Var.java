@@ -8,6 +8,7 @@ import IR.Type.Type;
 
 public class Var extends Register {
     public String name;
+    public int usedCnt = 0;
     public Var(Type t, String n) {
         ty = t;
         name = n;

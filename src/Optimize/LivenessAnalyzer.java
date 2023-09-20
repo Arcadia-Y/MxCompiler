@@ -52,17 +52,21 @@ public class LivenessAnalyzer {
             var def = i.getDef();
             var uses = i.getUse();
             if (uses != null)
-                for (var u : uses)
+                for (var u : uses) {
+                    u.usedCnt++;
                     if (!b.defs.contains(u))
                         b.uses.add(u);
+                }
             if (def != null) 
                 b.defs.add(def);
         }
         var uses = b.exitins.getUse();
         if (uses != null)
-            for (var u : uses)
+            for (var u : uses) {
+                u.usedCnt++;
                 if (!b.defs.contains(u))
                 b.uses.add(u);
+            }
     }
 
     // return if changed

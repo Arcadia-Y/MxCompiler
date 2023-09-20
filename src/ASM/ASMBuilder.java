@@ -420,9 +420,12 @@ public class ASMBuilder implements IRVisitor {
             return;
         }
         // class
-        gep2offset.put(it.res, ((IntConst)it.index.get(1)).value * 4);
-        gep2reg.put(it.res, load(it.ptr, regSet.t0));
-        //addBinaryInst(regMap.get(it.res), "addi", classPtrReg.toString(), ""+classMemberOffset);
+        if (it.res.usedCnt == 1) {
+            gep2offset.put(it.res, ((IntConst)it.index.get(1)).value * 4);
+            gep2reg.put(it.res, load(it.ptr, regSet.t0));
+            return;
+        }
+        addBinaryInst(regMap.get(it.res), "addi", load(it.ptr, regSet.t0).toString(), ""+((IntConst)it.index.get(1)).value * 4);
     }
 
     @Override
@@ -519,8 +522,9 @@ public class ASMBuilder implements IRVisitor {
         if (gep2reg.containsKey(it.ptr)) {
             var ptrReg = gep2reg.get(it.ptr);
             var offset = gep2offset.get(it.ptr);
-            if (dest instanceof Register)
+            if (dest instanceof Register) {
                 curBB.add(new Instruction("l"+size, dest.toString(), offset + "(" + ptrReg + ")"));
+            }
             else {
                 curBB.add(new Instruction("l"+size, "t0", offset+"(" + ptrReg + ")"));
                 curBB.add(new Instruction("sw", "t0", dest.toString()));
