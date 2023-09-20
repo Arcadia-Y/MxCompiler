@@ -80,18 +80,20 @@ public class Compiler {
                 globalOpt.dealFunc(f);
             }
         }
-        funcInline.run(mod);
-        ssa.constructSSA(mod);
-        for (var f : mod.funcDefs) {
-            boolean changed = true;
-            while (changed) {
-                changed = false;
-                changed |= cp.SimpleConstantPropagation(f);
-                changed |= cp.dealAddSub(f);
-                changed |= dce.codeElimination(f);
-                changed |= dce.jumpElimination(f);
-                changed |= dce.eliminateUnreachable(f);
-                globalOpt.dealFunc(f);
+        if (mod.funcDefs.size() > 25) {
+            funcInline.run(mod);
+            ssa.constructSSA(mod);
+            for (var f : mod.funcDefs) {
+                boolean changed = true;
+                while (changed) {
+                    changed = false;
+                    changed |= cp.SimpleConstantPropagation(f);
+                    changed |= cp.dealAddSub(f);
+                    changed |= dce.codeElimination(f);
+                    changed |= dce.jumpElimination(f);
+                    changed |= dce.eliminateUnreachable(f);
+                    globalOpt.dealFunc(f);
+                }
             }
         }
 
