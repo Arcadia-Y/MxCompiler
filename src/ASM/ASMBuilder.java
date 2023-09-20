@@ -1,6 +1,7 @@
 package ASM;
 
 import java.util.HashMap;
+import java.util.Iterator;
 
 import ASM.Node.*;
 import ASM.Node.Instruction;
@@ -14,6 +15,7 @@ public class ASMBuilder implements IRVisitor {
     ASMModule asm;
     Function curFunc;
     Block curBB;
+    BasicBlock curIRBB;
     int BBcnt = 0;
 
     HashMap<BasicBlock, Block> bb2bb;
@@ -24,7 +26,11 @@ public class ASMBuilder implements IRVisitor {
     HashMap<Integer, StackSlot> argumentMap = new HashMap<>();
     StackSlot raSlot;
     RegisterSet regSet;
-    
+
+    Iterator<IR.Node.Instruction> insIterator;
+    boolean exitVisitFlag = false;
+    HashMap<Var, Register> gep2reg = new HashMap<>();
+    HashMap<Var, Integer> gep2offset = new HashMap<>();
     public ASMBuilder(RegisterSet registerSet) {
         regSet = registerSet;
     }
@@ -122,6 +128,8 @@ public class ASMBuilder implements IRVisitor {
 
     @Override
     public void visit(FuncDef it) {
+        gep2offset.clear();
+        gep2reg.clear();
         curFunc = new Function(it.name);
         asm.funcs.add(curFunc);
         bb2bb = new HashMap<BasicBlock, Block>();
@@ -275,11 +283,17 @@ public class ASMBuilder implements IRVisitor {
 
     @Override
     public void visit(BasicBlock it) {
+        curIRBB = it;
         curBB = findBB(it);
         curFunc.blocks.add(curBB);
-        for (var i : it.ins)
+        exitVisitFlag = false;
+        insIterator = it.ins.iterator();
+        while (insIterator.hasNext()) {
+            var i = insIterator.next();
             i.accept(this);
-        it.exitins.accept(this);
+        }
+        if (!exitVisitFlag)
+            it.exitins.accept(this);
     }
 
     @Override
@@ -406,9 +420,9 @@ public class ASMBuilder implements IRVisitor {
             return;
         }
         // class
-        int offset = ((IntConst)it.index.get(1)).value * 4;
-        var ptrReg = load(it.ptr, regSet.t0);
-        addBinaryInst(regMap.get(it.res), "addi", ptrReg.toString(), ""+offset);
+        gep2offset.put(it.res, ((IntConst)it.index.get(1)).value * 4);
+        gep2reg.put(it.res, load(it.ptr, regSet.t0));
+        //addBinaryInst(regMap.get(it.res), "addi", classPtrReg.toString(), ""+classMemberOffset);
     }
 
     @Override
@@ -416,6 +430,41 @@ public class ASMBuilder implements IRVisitor {
         var op1reg = load(it.op1, regSet.t0);
         var op2reg = load(it.op2, regSet.ra);
         var dest = regMap.get(it.res);
+        if (!insIterator.hasNext() && curIRBB.exitins instanceof Br) {
+            var brIns = (Br) curIRBB.exitins;
+            if (brIns.cond == it.res) {
+                exitVisitFlag = true;
+                var trueBB = findBB(brIns.trueBB);
+                var falseBB = findBB(brIns.falseBB);
+                switch (it.cond) {
+                case "slt":
+                    curBB.exit(new Instruction("blt", op1reg.toString(), op2reg.toString(), trueBB.label));
+                    curBB.exit(new Instruction("j", falseBB.label));
+                    break;
+                case "sge":
+                    curBB.exit(new Instruction("bge", op1reg.toString(), op2reg.toString(), trueBB.label));
+                    curBB.exit(new Instruction("j", falseBB.label));
+                    break;
+                case "sle":
+                    curBB.exit(new Instruction("bge", op2reg.toString(), op1reg.toString(), trueBB.label));
+                    curBB.exit(new Instruction("j", falseBB.label));
+                    break;
+                case "sgt":
+                    curBB.exit(new Instruction("blt", op2reg.toString(), op1reg.toString(), trueBB.label));
+                    curBB.exit(new Instruction("j", falseBB.label));
+                    break;
+                case "eq":
+                    curBB.exit(new Instruction("beq", op1reg.toString(), op2reg.toString(), trueBB.label));
+                    curBB.exit(new Instruction("j", falseBB.label));
+                    break;
+                case "ne":
+                    curBB.exit(new Instruction("bne", op1reg.toString(), op2reg.toString(), trueBB.label));
+                    curBB.exit(new Instruction("j", falseBB.label));
+                    break;
+                }
+                return;
+            }
+        }
         switch (it.cond) {
         case "sle":
             addBinaryInst(regSet.t0, "slt", op2reg.toString(), op1reg.toString());
@@ -466,6 +515,18 @@ public class ASMBuilder implements IRVisitor {
             curBB.add(new Instruction("sw", "t0", dest.toString()));
             return;
         }
+        // class
+        if (gep2reg.containsKey(it.ptr)) {
+            var ptrReg = gep2reg.get(it.ptr);
+            var offset = gep2offset.get(it.ptr);
+            if (dest instanceof Register)
+                curBB.add(new Instruction("l"+size, dest.toString(), offset + "(" + ptrReg + ")"));
+            else {
+                curBB.add(new Instruction("l"+size, "t0", offset+"(" + ptrReg + ")"));
+                curBB.add(new Instruction("sw", "t0", dest.toString()));
+            }
+            return;
+        }
         // ptr
         var ptrReg = load(it.ptr, regSet.t0);
         if (dest instanceof Register) {    
@@ -511,6 +572,16 @@ public class ASMBuilder implements IRVisitor {
             return;
         }
         var ptr = load(it.ptr, regSet.ra);
+        // class
+        if (gep2reg.containsKey(it.ptr)) {
+            var ptrReg = gep2reg.get(it.ptr);
+            var offset = gep2offset.get(it.ptr);
+            if (it.value.ty.isBool())
+                curBB.add(new Instruction("sb", value.toString(), offset+"(" + ptrReg + ")"));
+            else 
+                curBB.add(new Instruction("sw", value.toString(), offset+"(" + ptrReg + ")"));
+            return;
+        }
         // ptr
         if (it.value.ty.isBool())
             curBB.add(new Instruction("sb", value.toString(), "0(" + ptr + ")"));
