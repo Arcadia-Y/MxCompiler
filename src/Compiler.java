@@ -27,13 +27,10 @@ public class Compiler {
             parser.removeErrorListeners();
             parser.addErrorListener(new MxErrorListener());
             ParseTree tree = parser.program();
-            //System.out.println(tree.toStringTree(parser));
             ASTBuilder astBuilder = new ASTBuilder();
             Program prog = (Program) astBuilder.visit(tree);
-            //System.out.println("Finish building AST.");
             SymbolCollector collector = new SymbolCollector();
             collector.visit(prog);
-            //System.out.println("Finish symbol collection.");
             SemanticChecker checker = new SemanticChecker();
             checker.visit(prog);
             System.out.println("Semantic: \033[01;32mPASS\033[0m");
@@ -79,6 +76,8 @@ public class Compiler {
                 changed |= dce.eliminateUnreachable(f);
             }
         }
+        new GlobalVariableOptimizer().run(mod);
+
         ssa.destroySSA(mod);
         new LivenessAnalyzer().run(mod);
         LinearScanRegisterAllocator regAlloc = new LinearScanRegisterAllocator();
